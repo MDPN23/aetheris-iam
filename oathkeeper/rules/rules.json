@@ -1,0 +1,96 @@
+[
+  {
+    "id": "microservice-a-all-methods",
+    "description": "Phase 2: OIDC + OPA policy enforcement for Microservice A",
+    "match": {
+      "url": "http://oathkeeper:4455/api/microservice-a<.*>",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    },
+    "authenticators": [
+      {
+        "handler": "jwt"
+      }
+    ],
+    "authorizer": {
+      "handler": "remote_json",
+      "config": {
+        "remote": "http://opa:8181/v1/data/aetheris/authz",
+        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{\"sub\":\"{{ .Subject }}\",\"roles\":{{ .Extra.roles | toJson }},\"exp\":{{ .Extra.exp }}},\"service\":\"microservice-a\",\"method\":\"{{ .Request.Method }}\"}}"
+      }
+    },
+    "mutators": [
+      {
+        "handler": "header",
+        "config": {
+          "headers": {
+            "X-Aetheris-Subject": "{{ .Subject }}",
+            "X-Aetheris-Roles":   "{{ .Extra.roles | toJson }}",
+            "X-Aetheris-Service": "microservice-a"
+          }
+        }
+      }
+    ],
+    "errors": [
+      { "handler": "json" }
+    ],
+    "upstream": {
+      "url": "http://microservice-a:5000",
+      "strip_path": "/api/microservice-a",
+      "preserve_host": false
+    }
+  },
+  {
+    "id": "microservice-b-all-methods",
+    "description": "Phase 2: OIDC + OPA policy enforcement for Microservice B",
+    "match": {
+      "url": "http://oathkeeper:4455/api/microservice-b<.*>",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    },
+    "authenticators": [
+      {
+        "handler": "jwt"
+      }
+    ],
+    "authorizer": {
+      "handler": "remote_json",
+      "config": {
+        "remote": "http://opa:8181/v1/data/aetheris/authz",
+        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{\"sub\":\"{{ .Subject }}\",\"roles\":{{ .Extra.roles | toJson }},\"exp\":{{ .Extra.exp }}},\"service\":\"microservice-b\",\"method\":\"{{ .Request.Method }}\"}}"
+      }
+    },
+    "mutators": [
+      {
+        "handler": "header",
+        "config": {
+          "headers": {
+            "X-Aetheris-Subject": "{{ .Subject }}",
+            "X-Aetheris-Roles":   "{{ .Extra.roles | toJson }}",
+            "X-Aetheris-Service": "microservice-b"
+          }
+        }
+      }
+    ],
+    "errors": [
+      { "handler": "json" }
+    ],
+    "upstream": {
+      "url": "http://microservice-b:5001",
+      "strip_path": "/api/microservice-b",
+      "preserve_host": false
+    }
+  },
+  {
+    "id": "health-public",
+    "description": "Public health check endpoint - no auth required",
+    "match": {
+      "url": "http://oathkeeper:4455/health<.*>",
+      "methods": ["GET"]
+    },
+    "authenticators": [{ "handler": "noop" }],
+    "authorizer": { "handler": "allow" },
+    "mutators": [{ "handler": "noop" }],
+    "upstream": {
+      "url": "http://microservice-a:5000"
+    }
+  }
+]

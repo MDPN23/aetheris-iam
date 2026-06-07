@@ -1,0 +1,161 @@
+{
+  "realm": "aetheris",
+  "displayName": "Aetheris IAM",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "refreshTokenMaxReuse": 0,
+  "revokeRefreshToken": true,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+
+  "clients": [
+    {
+      "clientId": "oathkeeper",
+      "name": "Aetheris IAP - Oathkeeper",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "oathkeeper-secret-dev",
+      "redirectUris": [
+        "http://localhost:4455/*",
+        "http://oathkeeper:4455/*"
+      ],
+      "webOrigins": ["*"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "oathkeeper",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "microservice-a",
+      "name": "Microservice A - Protected Resource",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": false
+    },
+    {
+      "clientId": "microservice-b",
+      "name": "Microservice B - Protected Resource",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": false
+    }
+  ],
+
+  "roles": {
+    "realm": [
+      {
+        "name": "aetheris-admin",
+        "description": "Full access to all Aetheris services"
+      },
+      {
+        "name": "service-a-reader",
+        "description": "Read-only access to Microservice A"
+      },
+      {
+        "name": "service-a-writer",
+        "description": "Read-write access to Microservice A"
+      },
+      {
+        "name": "service-b-reader",
+        "description": "Read-only access to Microservice B"
+      },
+      {
+        "name": "service-b-writer",
+        "description": "Read-write access to Microservice B"
+      }
+    ]
+  },
+
+  "users": [
+    {
+      "username": "admin-user",
+      "email": "admin@aetheris.dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Aetheris",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["aetheris-admin", "service-a-writer", "service-b-writer"]
+    },
+    {
+      "username": "reader-user",
+      "email": "reader@aetheris.dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Reader",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Reader@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["service-a-reader", "service-b-reader"]
+    },
+    {
+      "username": "service-a-only",
+      "email": "svcA@aetheris.dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "ServiceA",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "SvcA@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["service-a-reader"]
+    }
+  ],
+
+  "identityProviders": [],
+  "components": {}
+}

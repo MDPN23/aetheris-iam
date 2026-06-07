@@ -1,0 +1,82 @@
+serve:
+  proxy:
+    port: 4455
+    timeout:
+      read: 5s
+      write: 10s
+      idle: 120s
+  api:
+    port: 4456
+
+access_rules:
+  matching_strategy: glob
+  repositories:
+    - file:///etc/config/oathkeeper/rules/rules.json
+
+errors:
+  handlers:
+    json:
+      enabled: true
+      config:
+        verbose: true
+
+authenticators:
+  jwt:
+    enabled: true
+    config:
+      jwks_urls:
+        - "http://keycloak:8080/realms/aetheris/protocol/openid-connect/certs"
+      token_from:
+        - header: Authorization
+          prefix: "Bearer "
+      # Claims to extract and forward
+      required_scope: []
+      trusted_issuers:
+        - "http://keycloak:8080/realms/aetheris"
+        - "http://localhost:8080/realms/aetheris"
+
+  # Fallback: deny all unauthenticated
+  noop:
+    enabled: false
+
+  anonymous:
+    enabled: false
+
+authorizers:
+  # ── Phase 2: OPA Policy Decision ────────────────────────────────
+  remote_json:
+    enabled: true
+    config:
+      remote: "http://opa:8181/v1/data/aetheris/authz"
+      forward_response_headers_to_upstream: []
+      payload: |
+        {
+          "input": {
+            "token":        "{{ .Extra.token }}",
+            "token_claims": {
+              "sub":   "{{ .Subject }}",
+              "roles": {{ .Extra.roles | toJson }},
+              "exp":   {{ .Extra.exp }}
+            },
+            "service": "{{ .MatchContext.RegexpCaptureGroups[0] }}",
+            "method":  "{{ .Request.Method }}"
+          }
+        }
+
+mutators:
+  header:
+    enabled: true
+    config:
+      headers:
+        X-Aetheris-Subject:  "{{ .Subject }}"
+        X-Aetheris-Roles:    "{{ .Extra.roles | toJson }}"
+        X-Aetheris-Issuer:   "{{ .Extra.iss }}"
+        X-Request-ID:        "{{ .MatchContext.RegexpCaptureGroups[0] }}-{{ randAlpha 8 }}"
+
+log:
+  level: debug
+  format: json
+  leak_sensitive_values: false 
+
+tracing:
+  provider: ""

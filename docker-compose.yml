@@ -1,0 +1,131 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────
+# Aetheris IAM — Phase 1 (OIDC Federation) + Phase 2 (IAP + OPA)
+# Usage: docker compose up --build
+# ─────────────────────────────────────────────────────────────────
+
+networks:
+  aetheris-net:
+    driver: bridge
+
+volumes:
+  keycloak-data:
+  opa-data:
+
+services:
+
+  # ── Phase 1: Identity Provider ────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    container_name: aetheris-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - keycloak-data:/opt/keycloak/data
+    ports:
+      - "8080:8080"
+    networks:
+      - aetheris-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/realms/aetheris/.well-known/openid-configuration || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Phase 2: Policy Engine ────────────────────────────────────
+  opa:
+    image: openpolicyagent/opa:0.65.0
+    container_name: aetheris-opa
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --log-format=json
+      - --log-level=info
+      - /policies/authz.rego
+    volumes:
+      - ./policies:/policies:ro
+    ports:
+      - "8181:8181"
+    networks:
+      - aetheris-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8181/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Phase 2: Identity-Aware Proxy ─────────────────────────────
+  oathkeeper:
+    image: oryd/oathkeeper:v0.40.7
+    container_name: aetheris-oathkeeper
+    command: serve --config /etc/config/oathkeeper/config.yml
+    volumes:
+      - ./oathkeeper/config/config.yml:/etc/config/oathkeeper/config.yml:ro
+      - ./oathkeeper/rules/rules.json:/etc/config/oathkeeper/rules/rules.json:ro
+    ports:
+      - "4455:4455"   # proxy (public entry point)
+      - "4456:4456"   # management API
+    networks:
+      - aetheris-net
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      opa:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4456/health/alive || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Protected Resources ───────────────────────────────────────
+  microservice-a:
+    build:
+      context: ./k8s/microservices
+      dockerfile: Dockerfile
+      args:
+        SERVICE_FILE: service_a.py
+        SERVICE_PORT: 5000
+    container_name: aetheris-svc-a
+    environment:
+      PORT: "5000"
+    expose:
+      - "5000"
+    networks:
+      - aetheris-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  microservice-b:
+    build:
+      context: ./k8s/microservices
+      dockerfile: Dockerfile
+      args:
+        SERVICE_FILE: service_b.py
+        SERVICE_PORT: 5001
+    container_name: aetheris-svc-b
+    environment:
+      PORT: "5001"
+    expose:
+      - "5001"
+    networks:
+      - aetheris-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
