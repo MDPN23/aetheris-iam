@@ -98,6 +98,15 @@ Validate all 4 Phases (OIDC, RBAC, Step-Up MFA, and Session Revocation) against 
 bash scripts/test-phases.sh
 ```
 
+### 3. Interactive Visual Dashboard (No Stack Needed)
+We have built an offline-first visual simulator for quick presentations and client demonstrations. This allows you to visually test the OIDC, RBAC, Step-Up MFA, and Session Revocation logic directly in your browser:
+*   Open the [demo.html](demo.html) file directly in your web browser (double-click it).
+*   Alternatively, serve it locally using Python:
+    ```bash
+    python3 -m http.server 8000
+    # Navigate to: http://localhost:8000/demo.html
+    ```
+
 ---
 
 ## 👥 Test Users

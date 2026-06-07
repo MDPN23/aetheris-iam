@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aetheris IAM Playground</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --text-navy: #0F172A;
+            --text-muted: #64748B;
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --border-color: #E2E8F0;
+            --border-focus: #93C5FD;
+            --color-success: #10B981;
+            --color-error: #EF4444;
+            --color-warning: #F59E0B;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-navy);
+            line-height: 1.5;
+            padding: 24px;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-navy);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-title h1 span {
+            color: var(--primary);
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .badge-k8s {
+            background-color: #EFF6FF;
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            border: 1px solid #DBEAFE;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-k8s::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--color-success);
+            border-radius: 50%;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-navy);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-navy);
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            color: var(--text-navy);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--border-focus);
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-value {
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--primary-hover);
+        }
+
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background-color: var(--bg-main);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+        }
+
+        .toggle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toggle-item span {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Switch Style */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 38px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-switch {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #CBD5E1;
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .slider-switch:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-switch {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider-switch:before {
+            transform: translateX(18px);
+        }
+
+        .btn-send {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-send:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-send:active {
+            transform: scale(0.98);
+        }
+
+        .btn-send svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* Right Dashboard Layout */
+        .right-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Visual flow diagram styles */
+        .visualizer-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+        }
+
+        .flow-diagram {
+            width: 100%;
+            height: 160px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            padding: 0 10px;
+        }
+
+        .diagram-node {
+            background-color: var(--bg-card);
+            border: 2px solid var(--text-navy);
+            border-radius: 8px;
+            padding: 10px 14px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            z-index: 10;
+            min-width: 100px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
+        }
+
+        .diagram-node span {
+            display: block;
+            font-size: 9px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .diagram-node.active-success {
+            border-color: var(--color-success);
+            background-color: #F0FDF4;
+        }
+
+        .diagram-node.active-error {
+            border-color: var(--color-error);
+            background-color: #FEF2F2;
+        }
+
+        .diagram-node.active-warning {
+            border-color: var(--color-warning);
+            background-color: #FFFBEB;
+        }
+
+        /* SVG Connections */
+        .svg-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-path {
+            fill: none;
+            stroke: var(--border-color);
+            stroke-width: 3;
+            transition: stroke 0.3s;
+        }
+
+        .connection-path.active {
+            stroke: var(--primary);
+        }
+
+        .connection-path.success {
+            stroke: var(--color-success);
+        }
+
+        .connection-path.error {
+            stroke: var(--color-error);
+        }
+
+        /* Animated Pulse */
+        .pulse-dot {
+            fill: var(--primary);
+            visibility: hidden;
+        }
+
+        .pulse-dot.animating {
+            visibility: visible;
+            animation: moveDot 1.5s linear infinite;
+        }
+
+        @keyframes moveDot {
+            0% {
+                offset-distance: 0%;
+            }
+            100% {
+                offset-distance: 100%;
+            }
+        }
+
+        /* Console Card */
+        .console-card {
+            background-color: var(--text-navy);
+            color: #E2E8F0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 250px;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .console-title {
+            color: #94A3B8;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .console-title span::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--color-success);
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .console-line {
+            display: flex;
+            gap: 8px;
+            animation: fadeIn 0.15s ease-out forwards;
+        }
+
+        .console-timestamp {
+            color: #64748B;
+            user-select: none;
+        }
+
+        .console-success { color: var(--color-success); }
+        .console-error { color: var(--color-error); }
+        .console-warning { color: var(--color-warning); }
+        .console-info { color: #38BDF8; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(2px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Side Explainer Box */
+        .explainer-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .explainer-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .explainer-box {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .explainer-box h3 {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .analogy-badge {
+            background-color: #F1F5F9;
+            color: var(--text-navy);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+
+        .explainer-box p {
+            font-size: 13px;
+            color: var(--text-navy);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1>Aetheris <span>IAM</span> Playground</h1>
+            <p>Interactive Visual Request Simulator for OIDC, RBAC, Step-Up MFA & Session Revocation</p>
+        </div>
+        <div class="badge-k8s">Kubernetes k3d Stack (Simulated)</div>
+    </header>
+
+    <div class="grid-container">
+        <!-- Left Panel: Simulator Controls -->
+        <div class="card">
+            <div class="card-title">
+                <span>Simulator Controls</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </div>
+
+            <!-- User Selector -->
+            <div class="form-group">
+                <label for="userSelect">1. Identity (OIDC User)</label>
+                <select id="userSelect" onchange="onUserChange()">
+                    <option value="admin-user">admin-user (Roles: admin, writer)</option>
+                    <option value="reader-user">reader-user (Roles: reader)</option>
+                    <option value="service-a-only">service-a-only (Roles: svc-a-reader)</option>
+                </select>
+            </div>
+
+            <!-- Action/Method Selector -->
+            <div class="form-group">
+                <label for="actionSelect">2. Action & Endpoint</label>
+                <select id="actionSelect">
+                    <option value="GET_a">GET /api/microservice-a/data</option>
+                    <option value="POST_a">POST /api/microservice-a/data</option>
+                    <option value="DELETE_a">DELETE /api/microservice-a/data/1</option>
+                    <option value="GET_b">GET /api/microservice-b/events</option>
+                    <option value="POST_b">POST /api/microservice-b/events</option>
+                </select>
+            </div>
+
+            <!-- Risk Score Slider -->
+            <div class="slider-container">
+                <div class="slider-header">
+                    <label for="riskSlider">3. CARA Behavior Risk Score</label>
+                    <span id="riskVal" class="slider-value">0.15</span>
+                </div>
+                <input type="range" id="riskSlider" min="0" max="1" step="0.05" value="0.15" oninput="onRiskChange(this.value)">
+            </div>
+
+            <!-- Toggles for session and MFA -->
+            <div class="toggle-group">
+                <div class="toggle-item">
+                    <span>Perform Step-Up MFA?</span>
+                    <label class="switch">
+                        <input type="checkbox" id="mfaToggle">
+                        <span class="slider-switch"></span>
+                    </label>
+                </div>
+                <div class="toggle-item">
+                    <span>Revoke User Session?</span>
+                    <label class="switch">
+                        <input type="checkbox" id="revokeToggle">
+                        <span class="slider-switch"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Send Button -->
+            <button class="btn-send" onclick="sendRequest()">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                Send Request
+            </button>
+        </div>
+
+        <!-- Right Layout: Visual Flow & Terminal Logs -->
+        <div class="right-layout">
+            
+            <!-- Animated Flow Visualizer -->
+            <div class="visualizer-card">
+                <div class="card-title">Request Lifecyle Flow Diagram</div>
+                
+                <div class="flow-diagram" id="flowDiagram">
+                    <!-- SVG lines -->
+                    <svg class="svg-connections" id="svgConns">
+                        <!-- Client to Oathkeeper -->
+                        <path id="path1" class="connection-path" d="M 110,80 L 190,80"/>
+                        
+                        <!-- Oathkeeper to OPA Adapter -->
+                        <path id="path2" class="connection-path" d="M 290,80 L 370,80"/>
+                        
+                        <!-- OPA Adapter to Keycloak -->
+                        <path id="path3" class="connection-path" d="M 420,60 Q 420,10 470,10"/>
+                        <!-- OPA Adapter to CARA -->
+                        <path id="path4" class="connection-path" d="M 420,80 Q 440,80 470,80"/>
+                        <!-- OPA Adapter to OPA -->
+                        <path id="path5" class="connection-path" d="M 420,100 Q 420,150 470,150"/>
+                        
+                        <!-- OPA Adapter back to Oathkeeper (Authorization Response) -->
+                        <path id="path6" class="connection-path" d="M 370,90 L 290,90"/>
+                        
+                        <!-- Oathkeeper to Microservice -->
+                        <path id="path7" class="connection-path" d="M 240,110 L 240,135 Q 240,150 280,150 L 590,150"/>
+                    </svg>
+
+                    <!-- Nodes -->
+                    <div class="diagram-node" id="nodeClient">
+                        Client
+                        <span>Sends Token</span>
+                    </div>
+
+                    <div class="diagram-node" id="nodeOathkeeper">
+                        Oathkeeper IAP
+                        <span>Verifies Signature</span>
+                    </div>
+
+                    <div class="diagram-node" id="nodeAdapter">
+                        OPA Adapter
+                        <span>Enforces Policy</span>
+                    </div>
+
+                    <!-- Inner services column -->
+                    <div style="display:flex; flex-direction:column; gap:16px; justify-content:center;">
+                        <div class="diagram-node" id="nodeKeycloak" style="min-width: 90px;">
+                            Keycloak
+                            <span>Introspection</span>
+                        </div>
+                        <div class="diagram-node" id="nodeCARA" style="min-width: 90px;">
+                            CARA Risk
+                            <span>Behavior Assess</span>
+                        </div>
+                        <div class="diagram-node" id="nodeOPA" style="min-width: 90px;">
+                            OPA Engine
+                            <span>RBAC Policy</span>
+                        </div>
+                    </div>
+
+                    <div class="diagram-node" id="nodeService">
+                        Microservice
+                        <span>Resource Endpoint</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Output -->
+            <div class="console-card">
+                <div class="console-title">
+                    <span>Trace Log Terminal</span>
+                    <span style="color: #64748B; cursor:pointer;" onclick="clearConsole()">Clear Logs</span>
+                </div>
+                <div id="consoleBody">
+                    <div class="console-line">
+                        <span class="console-timestamp">[20:45:00]</span>
+                        <span>Terminal initialized. Aetheris playground is ready to run simulations.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Analogy Explainer -->
+            <div class="explainer-container">
+                <div class="explainer-box">
+                    <h3>🛡️ Security Explainer</h3>
+                    <div id="techExplainer">
+                        Select a user and send a request to view details on OIDC token validation, policies, and role mappings.
+                    </div>
+                </div>
+                <div class="explainer-box">
+                    <h3>🏰 Guard Analogy</h3>
+                    <div class="analogy-badge" id="analogyBadge">Research Facility</div>
+                    <div id="analogyExplainer">
+                        Watch how the front gate guard, receptionist rulebook, and behavioral scanners map to real-world cloud security.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const users = {
+            "admin-user": {
+                name: "admin-user",
+                sub: "c8dd633e-4cd8-4429-83d4-e5bb299b0585",
+                roles: ["service-a-writer", "service-b-writer", "aetheris-admin"]
+            },
+            "reader-user": {
+                name: "reader-user",
+                sub: "fa82a170-a392-411a-8cfa-53ef711b7d51",
+                roles: ["service-a-reader", "service-b-reader"]
+            },
+            "service-a-only": {
+                name: "service-a-only",
+                sub: "b0b2e811-9e23-455b-80a5-f8a48c4d29f8",
+                roles: ["service-a-reader"]
+            }
+        };
+
+        const permission_matrix = {
+            "microservice-a": {
+                "GET": ["service-a-reader", "service-a-writer", "aetheris-admin"],
+                "POST": ["service-a-writer", "aetheris-admin"],
+                "DELETE": ["aetheris-admin"]
+            },
+            "microservice-b": {
+                "GET": ["service-b-reader", "service-b-writer", "aetheris-admin"],
+                "POST": ["service-b-writer", "aetheris-admin"]
+            }
+        };
+
+        function onUserChange() {
+            logInfo(`Switched active profile context to ${document.getElementById("userSelect").value}`);
+        }
+
+        function onRiskChange(val) {
+            document.getElementById("riskVal").innerText = parseFloat(val).toFixed(2);
+        }
+
+        function clearConsole() {
+            document.getElementById("consoleBody").innerHTML = '';
+        }
+
+        function logConsole(message, type = '') {
+            const date = new Date();
+            const timeStr = date.toTimeString().split(' ')[0];
+            const div = document.createElement("div");
+            div.className = "console-line";
+            
+            let colorClass = '';
+            if (type === 'success') colorClass = 'console-success';
+            else if (type === 'error') colorClass = 'console-error';
+            else if (type === 'warning') colorClass = 'console-warning';
+            else if (type === 'info') colorClass = 'console-info';
+
+            div.innerHTML = `<span class="console-timestamp">[${timeStr}]</span><span class="${colorClass}">${message}</span>`;
+            const consoleBody = document.getElementById("consoleBody");
+            consoleBody.appendChild(div);
+            consoleBody.scrollTop = consoleBody.scrollHeight;
+        }
+
+        function logInfo(msg) { logConsole(msg, 'info'); }
+        function logSuccess(msg) { logConsole(msg, 'success'); }
+        function logWarning(msg) { logConsole(msg, 'warning'); }
+        function logError(msg) { logConsole(msg, 'error'); }
+
+        function highlightNode(nodeId, status) {
+            const node = document.getElementById(nodeId);
+            node.className = "diagram-node";
+            if (status) {
+                node.classList.add(`active-${status}`);
+            }
+        }
+
+        function colorPath(pathId, status) {
+            const path = document.getElementById(pathId);
+            path.className = "connection-path";
+            if (status) {
+                path.classList.add(status);
+            }
+        }
+
+        function resetVisuals() {
+            const nodes = ["nodeClient", "nodeOathkeeper", "nodeAdapter", "nodeKeycloak", "nodeCARA", "nodeOPA", "nodeService"];
+            nodes.forEach(n => highlightNode(n, null));
+            
+            const paths = ["path1", "path2", "path3", "path4", "path5", "path6", "path7"];
+            paths.forEach(p => colorPath(p, null));
+        }
+
+        async function sendRequest() {
+            resetVisuals();
+            
+            const userKey = document.getElementById("userSelect").value;
+            const actionKey = document.getElementById("actionSelect").value;
+            const riskScore = parseFloat(document.getElementById("riskSlider").value);
+            const mfaDone = document.getElementById("mfaToggle").checked;
+            const sessionRevoked = document.getElementById("revokeToggle").checked;
+
+            const user = users[userKey];
+            const parts = actionKey.split("_");
+            const method = parts[0];
+            const serviceKey = parts[1] === 'a' ? 'microservice-a' : 'microservice-b';
+            const endpoint = parts[1] === 'a' ? `/api/microservice-a/data` : `/api/microservice-b/events`;
+
+            logConsole(`⚡ Dispatching request: ${method} ${endpoint}`);
+            highlightNode("nodeClient", "success");
+            colorPath("path1", "active");
+            
+            await new Promise(r => setTimeout(r, 400));
+            
+            // Oathkeeper checks signature
+            logInfo(`IAP Gate: Validating signature of JWT token for user '${user.name}'...`);
+            highlightNode("nodeOathkeeper", "success");
+            colorPath("path2", "active");
+            
+            await new Promise(r => setTimeout(r, 400));
+
+            // Adapter intercept
+            logInfo(`OPA Adapter: Intercepting payload. Querying dependencies...`);
+            highlightNode("nodeAdapter", "success");
+
+            // 1. Keycloak Introspect
+            colorPath("path3", "active");
+            logInfo(`Introspection: Querying Keycloak '/token/introspect' endpoint...`);
+            await new Promise(r => setTimeout(r, 400));
+            
+            if (sessionRevoked) {
+                highlightNode("nodeKeycloak", "error");
+                highlightNode("nodeAdapter", "error");
+                colorPath("path3", "error");
+                logError(`Introspection Result: Token is INACTIVE (Session Revoked via Admin Dashboard/Logout).`);
+                logError(`Blocking Request: fail-closed enforcement active.`);
+                logError(`🔴 Gateway Response: 403 Forbidden [Reason: token_revoked]`);
+                
+                document.getElementById("techExplainer").innerHTML = `
+                    <strong>Token Revoked</strong><br>
+                    The session verification failed in Keycloak. Introspection returned <code>{"active": false}</code>. 
+                    The proxy enforces <strong>fail-closed security</strong>, denying any further resource access.
+                `;
+                document.getElementById("analogyExplainer").innerHTML = `
+                    <strong>The Badge got Blocked</strong><br>
+                    The receptionist called the badge office and discovered this badge was reported stolen. 
+                    Access is denied immediately.
+                `;
+                return;
+            } else {
+                highlightNode("nodeKeycloak", "success");
+                colorPath("path3", "success");
+                logSuccess(`Introspection Result: Token is ACTIVE.`);
+            }
+
+            // 2. CARA assessment
+            colorPath("path4", "active");
+            logInfo(`CARA Risk Assessor: Retrieving user threat index...`);
+            await new Promise(r => setTimeout(r, 400));
+            logInfo(`CARA Response: Risk Index = ${riskScore.toFixed(2)}`);
+            if (riskScore >= 0.6) {
+                highlightNode("nodeCARA", "warning");
+                colorPath("path4", "warning");
+                logWarning(`CARA: Threat level is elevated (>= 0.6). Step-up MFA trigger activated.`);
+            } else {
+                highlightNode("nodeCARA", "success");
+                colorPath("path4", "success");
+            }
+
+            // 3. OPA Evaluation
+            colorPath("path5", "active");
+            logInfo(`OPA Engine: Fetching Rego security policies...`);
+            await new Promise(r => setTimeout(r, 400));
+            
+            // Eval MFA
+            let mfaOk = true;
+            if (riskScore >= 0.6 && !mfaDone) {
+                mfaOk = false;
+            }
+
+            // Eval Roles
+            const allowedRoles = permission_matrix[serviceKey][method] || [];
+            const roleOk = user.roles.some(r => allowedRoles.includes(r));
+
+            highlightNode("nodeOPA", "success");
+            colorPath("path5", "success");
+
+            // Evaluate combined adapter decision
+            await new Promise(r => setTimeout(r, 400));
+            
+            if (!mfaOk) {
+                highlightNode("nodeAdapter", "warning");
+                highlightNode("nodeOPA", "warning");
+                colorPath("path6", "warning");
+                logWarning(`OPA Evaluation Failed: High risk access requires MFA. Token missing 'mfa' claim.`);
+                logError(`🔴 Gateway Response: 403 Forbidden [Reason: step_up_mfa_required]`);
+                
+                document.getElementById("techExplainer").innerHTML = `
+                    <strong>MFA Required</strong><br>
+                    OPA policy evaluated <code>mfa_satisfied := false</code> because the risk score is <strong>${riskScore.toFixed(2)}</strong> (high risk $\\ge 0.6$) and the token lacks the claim <code>acr: mfa</code>.
+                `;
+                document.getElementById("analogyExplainer").innerHTML = `
+                    <strong>Biometric Scan Needed</strong><br>
+                    The receptionist noticed suspicious behavior on the cameras. 
+                    They need an additional fingerprint scan (MFA) to let the visitor pass.
+                `;
+                return;
+            }
+
+            if (!roleOk) {
+                highlightNode("nodeAdapter", "error");
+                highlightNode("nodeOPA", "error");
+                colorPath("path6", "error");
+                logError(`OPA Evaluation Failed: Roles ${JSON.stringify(user.roles)} cannot perform ${method} on ${serviceKey}.`);
+                logError(`🔴 Gateway Response: 403 Forbidden [Reason: insufficient_privilege]`);
+                
+                document.getElementById("techExplainer").innerHTML = `
+                    <strong>Role Violation (RBAC)</strong><br>
+                    The OPA rule failed. The request requires one of these roles: <code>${JSON.stringify(allowedRoles)}</code>. 
+                    Your user only has: <code>${JSON.stringify(user.roles)}</code>.
+                `;
+                document.getElementById("analogyExplainer").innerHTML = `
+                    <strong>Wrong Key Card</strong><br>
+                    The facility rulebook says only researchers with "Writer" badges can enter this lab. 
+                    Your card only has "Reader" clearance.
+                `;
+                return;
+            }
+
+            // Success case
+            highlightNode("nodeAdapter", "success");
+            colorPath("path6", "success");
+            colorPath("path7", "success");
+            highlightNode("nodeService", "success");
+            
+            logSuccess(`Authorization Approved! Forwarding to Upstream...`);
+            logInfo(`Header Injection: Injecting X-Aetheris-Subject: '${user.sub}'`);
+            logInfo(`Header Injection: Injecting X-Aetheris-Roles: '${JSON.stringify(user.roles)}'`);
+            
+            await new Promise(r => setTimeout(r, 400));
+            logSuccess(`🟢 Upstream Resource Response: 200 OK`);
+
+            document.getElementById("techExplainer").innerHTML = `
+                <strong>Request Authorized!</strong><br>
+                All security gates passed:
+                <ul>
+                    <li>Token is authentic & active</li>
+                    <li>Risk assessment cleared (or MFA satisfied)</li>
+                    <li>Roles validated by RBAC matrix</li>
+                </ul>
+            `;
+            document.getElementById("analogyExplainer").innerHTML = `
+                <strong>Access Approved</strong><br>
+                The visitor badge is valid, the cameras show no threat, and the rulebook allows entry. 
+                The guard unlocks the door.
+            `;
+        }
+    </script>
+</body>
+</html>
