@@ -70,11 +70,21 @@ section "PHASE 2 — IAP (Oathkeeper) + OPA Policy Engine"
 curl -s -X POST "http://localhost:5002/mock/reset" > /dev/null
 
 echo "  Checking OPA health..."
-OPA_STATUS=$(curl -so /dev/null -w "%{http_code}" "${OPA_URL}/health")
-[[ "$OPA_STATUS" == "200" ]] && pass "OPA service healthy" || fail "OPA health check failed"
+OPA_STATUS=$(curl -so /dev/null -w "%{http_code}" "${OPA_URL}/health" || echo "000")
+if [[ "$OPA_STATUS" == "200" ]]; then
+  pass "OPA service healthy"
+else
+  # Fallback check via OPA adapter when OPA is not exposed (e.g. inside K8s)
+  ADAPTER_HEALTH=$(curl -so /dev/null -w "%{http_code}" "http://localhost:8182/health" || echo "000")
+  if [[ "$ADAPTER_HEALTH" == "200" ]]; then
+    pass "OPA service healthy (verified via OPA Adapter)"
+  else
+    fail "OPA health check failed (directly and via OPA Adapter)"
+  fi
+fi
 
 echo "  Checking Oathkeeper proxy health..."
-OK_STATUS=$(curl -so /dev/null -w "%{http_code}" "http://localhost:4456/health/alive")
+OK_STATUS=$(curl -so /dev/null -w "%{http_code}" "http://localhost:4456/health/alive" || echo "000")
 [[ "$OK_STATUS" == "200" ]] && pass "Oathkeeper proxy healthy" || fail "Oathkeeper health check failed"
 
 echo ""
@@ -150,11 +160,11 @@ STATUS=$(curl -so /dev/null -w "%{http_code}" \
 # and query the OPA Adapter directly to confirm it returns the correct step-up MFA payload.
 ADAPTER_STATUS=$(curl -so /dev/null -w "%{http_code}" -X POST \
   -H "Content-Type: application/json" \
-  -d "{\"input\":{\"token\":\"$ADMIN_TOKEN\",\"token_claims\":{\"sub\":\"c8dd633e-4cd8-4429-83d4-e5bb299b0585\",\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"]},\"service\":\"microservice-a\",\"method\":\"GET\"}}" \
+  -d "{\"input\":{\"token\":\"$ADMIN_TOKEN\",\"token_claims\":{\"sub\":\"c8dd633e-4cd8-4429-83d4-e5bb299b0585\",\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"],\"iss\":\"http://localhost:8080/realms/aetheris\"},\"service\":\"microservice-a\",\"method\":\"GET\"}}" \
   "http://localhost:8182/authz")
 ADAPTER_BODY=$(curl -s -X POST \
   -H "Content-Type: application/json" \
-  -d "{\"input\":{\"token\":\"$ADMIN_TOKEN\",\"token_claims\":{\"sub\":\"c8dd633e-4cd8-4429-83d4-e5bb299b0585\",\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"]},\"service\":\"microservice-a\",\"method\":\"GET\"}}" \
+  -d "{\"input\":{\"token\":\"$ADMIN_TOKEN\",\"token_claims\":{\"sub\":\"c8dd633e-4cd8-4429-83d4-e5bb299b0585\",\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"],\"iss\":\"http://localhost:8080/realms/aetheris\"},\"service\":\"microservice-a\",\"method\":\"GET\"}}" \
   "http://localhost:8182/authz")
 [[ "$STATUS" == "403" && "$ADAPTER_STATUS" == "403" && "$ADAPTER_BODY" == *"mfa_required"* ]] && pass "access denied with mfa_required payload (403)" || fail "MFA enforcement failed (Oathkeeper: $STATUS, Adapter: $ADAPTER_STATUS, Adapter body: $ADAPTER_BODY)"
 
@@ -172,11 +182,79 @@ STATUS=$(curl -so /dev/null -w "%{http_code}" \
 curl -s -X POST "${CARA_URL}/mock/reset" > /dev/null
 
 # ─────────────────────────────────────────────────────────────────
+# PHASE 4: Session Revocation Tests
+# ─────────────────────────────────────────────────────────────────
+section "PHASE 4 — Session Revocation"
+
+echo "  [4a] Issue token for admin-user..."
+REVOKE_TEST_TOKEN=$(get_token "admin-user" "Admin@123")
+[[ -n "$REVOKE_TEST_TOKEN" && "$REVOKE_TEST_TOKEN" != "null" ]] && pass "token issued successfully" || fail "token issue failed"
+
+echo "  [4b] Access protected resource before revocation (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $REVOKE_TEST_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "access permitted (200)" || fail "access failed (HTTP $STATUS)"
+
+echo "  [4c] Revoke token using Keycloak OIDC Revoke Endpoint..."
+REVOKE_STATUS=$(curl -so /dev/null -w "%{http_code}" -X POST \
+  "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/revoke" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "client_id=${CLIENT_ID}" \
+  --data-urlencode "client_secret=${CLIENT_SECRET}" \
+  --data-urlencode "token=${REVOKE_TEST_TOKEN}")
+[[ "$REVOKE_STATUS" == "200" ]] && pass "revoke endpoint returned 200" || fail "revoke failed (HTTP $REVOKE_STATUS)"
+
+echo "  [4d] Access protected resource after revocation (expect 403)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $REVOKE_TEST_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "403" ]] && pass "access denied (403)" || fail "access allowed or wrong status (HTTP $STATUS)"
+
+echo "  [4e] Test Backchannel Logout: Issue new access & refresh tokens..."
+TOKENS=$(curl -sf -X POST \
+  "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "grant_type=password" \
+  --data-urlencode "client_id=${CLIENT_ID}" \
+  --data-urlencode "client_secret=${CLIENT_SECRET}" \
+  --data-urlencode "username=admin-user" \
+  --data-urlencode "password=Admin@123" \
+  --data-urlencode "scope=openid")
+
+ACCESS_TOKEN=$(echo "$TOKENS" | jq -r '.access_token')
+REFRESH_TOKEN=$(echo "$TOKENS" | jq -r '.refresh_token')
+
+[[ -n "$ACCESS_TOKEN" && "$ACCESS_TOKEN" != "null" && -n "$REFRESH_TOKEN" && "$REFRESH_TOKEN" != "null" ]] && pass "access and refresh tokens issued" || fail "token exchange failed"
+
+echo "  [4f] Access resource with new token (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "access permitted (200)" || fail "access failed (HTTP $STATUS)"
+
+echo "  [4g] Logout user session using OIDC Logout Endpoint with refresh token..."
+LOGOUT_STATUS=$(curl -so /dev/null -w "%{http_code}" -X POST \
+  "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/logout" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "client_id=${CLIENT_ID}" \
+  --data-urlencode "client_secret=${CLIENT_SECRET}" \
+  --data-urlencode "refresh_token=${REFRESH_TOKEN}")
+# Keycloak returns 204 No Content for successful backchannel logout
+[[ "$LOGOUT_STATUS" == "204" ]] && pass "logout endpoint returned 204" || fail "logout failed (HTTP $LOGOUT_STATUS)"
+
+echo "  [4h] Access resource with access token after logout (expect 403)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "403" ]] && pass "access denied after logout (403)" || fail "access allowed or wrong status after logout (HTTP $STATUS)"
+
+# ─────────────────────────────────────────────────────────────────
 # SUMMARY
 # ─────────────────────────────────────────────────────────────────
 echo ""
 echo "═════════════════════════════════════════"
 echo -e "  Results: ${GREEN}${PASS} passed${NC} / ${RED}${FAIL} failed${NC}"
 echo "═════════════════════════════════════════"
-[[ "$FAIL" -eq 0 ]] && echo -e "${GREEN}  All tests passed. Phase 1-3 validated.${NC}" || \
+[[ "$FAIL" -eq 0 ]] && echo -e "${GREEN}  All tests passed. Phase 1-4 validated.${NC}" || \
   echo -e "${RED}  Some tests failed. Check service logs.${NC}"

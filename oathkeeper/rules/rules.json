@@ -15,7 +15,7 @@
       "handler": "remote_json",
       "config": {
         "remote": "http://opa-adapter:8182/authz",
-        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+        "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\"}}"
       }
     },
     "mutators": [
@@ -55,7 +55,7 @@
       "handler": "remote_json",
       "config": {
         "remote": "http://opa-adapter:8182/authz",
-        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+        "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\"}}"
       }
     },
     "mutators": [

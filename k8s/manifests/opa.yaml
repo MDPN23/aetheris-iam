@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  namespace: aetheris
+  labels:
+    app: opa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+    spec:
+      containers:
+      - name: opa
+        image: openpolicyagent/opa:0.65.0-debug
+        args:
+        - "run"
+        - "--server"
+        - "--addr=0.0.0.0:8181"
+        - "--log-format=json"
+        - "--log-level=info"
+        - "/policies/authz.rego"
+        ports:
+        - containerPort: 8181
+          name: http
+        volumeMounts:
+        - name: policy-volume
+          mountPath: /policies
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: policy-volume
+        configMap:
+          name: opa-policy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa
+  namespace: aetheris
+spec:
+  ports:
+  - port: 8181
+    targetPort: 8181
+    name: http
+  selector:
+    app: opa

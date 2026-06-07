@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oathkeeper
+  namespace: aetheris
+  labels:
+    app: oathkeeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oathkeeper
+  template:
+    metadata:
+      labels:
+        app: oathkeeper
+    spec:
+      containers:
+      - name: oathkeeper
+        image: oryd/oathkeeper:v0.40.7
+        command: ["oathkeeper", "serve", "--config", "/etc/config/oathkeeper/config.yml"]
+        ports:
+        - containerPort: 4455
+          name: proxy
+        - containerPort: 4456
+          name: api
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config/oathkeeper/config.yml
+          subPath: config.yml
+          readOnly: true
+        - name: rules-volume
+          mountPath: /etc/config/oathkeeper/rules/rules.json
+          subPath: rules.json
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health/alive
+            port: 4456
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 4456
+          initialDelaySeconds: 15
+          periodSeconds: 10
+      volumes:
+      - name: config-volume
+        configMap:
+          name: oathkeeper-config
+      - name: rules-volume
+        configMap:
+          name: oathkeeper-rules
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oathkeeper
+  namespace: aetheris
+spec:
+  type: NodePort
+  ports:
+  - port: 4455
+    targetPort: 4455
+    nodePort: 30455
+    name: proxy
+  - port: 4456
+    targetPort: 4456
+    nodePort: 30456
+    name: api
+  selector:
+    app: oathkeeper

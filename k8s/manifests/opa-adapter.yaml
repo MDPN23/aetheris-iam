@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa-adapter
+  namespace: aetheris
+  labels:
+    app: opa-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa-adapter
+  template:
+    metadata:
+      labels:
+        app: opa-adapter
+    spec:
+      containers:
+      - name: opa-adapter
+        image: aetheris-opa-adapter:local
+        imagePullPolicy: Never
+        env:
+        - name: KEYCLOAK_URL
+          value: "http://keycloak:8080"
+        ports:
+        - containerPort: 8182
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8182
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8182
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa-adapter
+  namespace: aetheris
+spec:
+  type: NodePort
+  ports:
+  - port: 8182
+    targetPort: 8182
+    nodePort: 30182
+    name: http
+  selector:
+    app: opa-adapter

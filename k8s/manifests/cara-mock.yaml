@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cara-mock
+  namespace: aetheris
+  labels:
+    app: cara-mock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cara-mock
+  template:
+    metadata:
+      labels:
+        app: cara-mock
+    spec:
+      containers:
+      - name: cara-mock
+        image: aetheris-cara-mock:local
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5002
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5002
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5002
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cara-mock
+  namespace: aetheris
+spec:
+  type: NodePort
+  ports:
+  - port: 5002
+    targetPort: 5002
+    nodePort: 30002
+    name: http
+  selector:
+    app: cara-mock

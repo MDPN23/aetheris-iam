@@ -3,7 +3,9 @@ Aetheris - OPA Adapter
 Translates OPA JSON decision bodies into HTTP status codes for Ory Oathkeeper
 """
 import json
+import os
 import urllib.request
+import urllib.parse
 import urllib.error
 from flask import Flask, request, jsonify
 
@@ -11,6 +13,48 @@ app = Flask(__name__)
 SERVICE_NAME = "opa-adapter"
 
 OPA_URL = "http://opa:8181/v1/data/aetheris/authz"
+
+
+def is_token_active(token, issuer=None):
+    if not token:
+        return False
+    # Strip Bearer prefix if present
+    if token.startswith("Bearer "):
+        token = token[7:]
+    
+    if not issuer:
+        issuer = "http://localhost:8080/realms/aetheris"
+    
+    try:
+        keycloak_url = os.getenv("KEYCLOAK_URL", "http://keycloak:8080")
+        url = f"{keycloak_url}/realms/aetheris/protocol/openid-connect/token/introspect"
+        
+        post_data = urllib.parse.urlencode({
+            "token": token,
+            "client_id": "oathkeeper",
+            "client_secret": "oathkeeper-secret-dev"
+        }).encode("utf-8")
+        
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        if issuer:
+            parsed = urllib.parse.urlparse(issuer)
+            if parsed.netloc:
+                headers["Host"] = parsed.netloc
+                print(f"DEBUG: using Host header '{parsed.netloc}' for introspection", flush=True)
+        
+        req = urllib.request.Request(
+            url,
+            data=post_data,
+            headers=headers,
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=2) as res:
+            res_data = json.loads(res.read().decode("utf-8"))
+            return res_data.get("active", False)
+    except Exception as e:
+        print(f"Error calling Keycloak token introspection: {e}", flush=True)
+        # Fail-closed for security
+        return False
 
 
 @app.route("/health", methods=["GET"])
@@ -39,6 +83,20 @@ def authz():
     payload = request.get_json() or {}
     print(f"DEBUG: payload received: {json.dumps(payload)}", flush=True)
     
+    # Extract token and verify its active status in Keycloak (session revocation check)
+    raw_token = payload.get("input", {}).get("token")
+    token_claims = payload.get("input", {}).get("token_claims", {}) or {}
+    issuer = token_claims.get("iss")
+    
+    if raw_token and raw_token.strip() and raw_token != "<no value>":
+        if not is_token_active(raw_token, issuer):
+            print("DEBUG: session revocation check failed - token is inactive", flush=True)
+            return jsonify({
+                "error": "unauthorized",
+                "deny_reason": "token_revoked",
+                "message": "The session has been revoked or logged out"
+            }), 403
+
     # Extract username and fetch risk score from CARA
     token_claims = payload.get("input", {}).get("token_claims", {}) or {}
     username = token_claims.get("preferred_username") or token_claims.get("sub")

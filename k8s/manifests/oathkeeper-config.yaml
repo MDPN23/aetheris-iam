@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oathkeeper-config
+  namespace: aetheris
+data:
+  config.yml: |
+    serve:
+      proxy:
+        port: 4455
+        timeout:
+          read: 5s
+          write: 10s
+          idle: 120s
+      api:
+        port: 4456
+    
+    access_rules:
+      matching_strategy: regexp
+      repositories:
+        - file:///etc/config/oathkeeper/rules/rules.json
+    
+    errors:
+      handlers:
+        json:
+          enabled: true
+          config:
+            verbose: true
+    
+    authenticators:
+      jwt:
+        enabled: true
+        config:
+          jwks_urls:
+            - "http://keycloak:8080/realms/aetheris/protocol/openid-connect/certs"
+          token_from:
+            header: Authorization
+          # Claims to extract and forward
+          required_scope: []
+          trusted_issuers:
+            - "http://keycloak:8080/realms/aetheris"
+            - "http://localhost:8080/realms/aetheris"
+    
+      # Fallback: deny all unauthenticated
+      noop:
+        enabled: false
+    
+      anonymous:
+        enabled: false
+    
+    authorizers:
+      # ── Phase 2: OPA Policy Decision ────────────────────────────────
+      remote_json:
+        enabled: true
+        config:
+          remote: "http://opa-adapter:8182/authz"
+          forward_response_headers_to_upstream: []
+          payload: |
+            {
+              "input": {
+                "token":        "{{ .Extra.token }}",
+                "token_claims": {{ .Extra | toJson }},
+                "service": "{{ index .MatchContext.RegexpCaptureGroups 0 }}",
+                "method":  "{{ .MatchContext.Method }}"
+              }
+            }
+    
+    mutators:
+      header:
+        enabled: true
+        config:
+          headers:
+            X-Aetheris-Subject:  "{{ .Subject }}"
+            X-Aetheris-Roles:    "{{ .Extra.roles | toJson }}"
+            X-Aetheris-Issuer:   "{{ .Extra.iss }}"
+            X-Request-ID:        "{{ index .MatchContext.RegexpCaptureGroups 0 }}-{{ randAlpha 8 }}"
+    
+    log:
+      level: debug
+      format: json
+      leak_sensitive_values: false 
+    
+    
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oathkeeper-rules
+  namespace: aetheris
+data:
+  rules.json: |
+    [
+      {
+        "id": "microservice-a-all-methods",
+        "description": "Phase 2: OIDC + OPA policy enforcement for Microservice A",
+        "match": {
+          "url": "http://<(localhost|oathkeeper):4455>/api/microservice-a<.*>",
+          "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        },
+        "authenticators": [
+          {
+            "handler": "jwt"
+          }
+        ],
+        "authorizer": {
+          "handler": "remote_json",
+          "config": {
+            "remote": "http://opa-adapter:8182/authz",
+            "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+          }
+        },
+        "mutators": [
+          {
+            "handler": "header",
+            "config": {
+              "headers": {
+                "X-Aetheris-Subject": "{{ .Subject }}",
+                "X-Aetheris-Roles":   "{{ .Extra.roles | toJson }}",
+                "X-Aetheris-Service": "microservice-a"
+              }
+            }
+          }
+        ],
+        "errors": [
+          { "handler": "json" }
+        ],
+        "upstream": {
+          "url": "http://microservice-a:5000",
+          "strip_path": "/api/microservice-a",
+          "preserve_host": false
+        }
+      },
+      {
+        "id": "microservice-b-all-methods",
+        "description": "Phase 2: OIDC + OPA policy enforcement for Microservice B",
+        "match": {
+          "url": "http://<(localhost|oathkeeper):4455>/api/microservice-b<.*>",
+          "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        },
+        "authenticators": [
+          {
+            "handler": "jwt"
+          }
+        ],
+        "authorizer": {
+          "handler": "remote_json",
+          "config": {
+            "remote": "http://opa-adapter:8182/authz",
+            "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+          }
+        },
+        "mutators": [
+          {
+            "handler": "header",
+            "config": {
+              "headers": {
+                "X-Aetheris-Subject": "{{ .Subject }}",
+                "X-Aetheris-Roles":   "{{ .Extra.roles | toJson }}",
+                "X-Aetheris-Service": "microservice-b"
+              }
+            }
+          }
+        ],
+        "errors": [
+          { "handler": "json" }
+        ],
+        "upstream": {
+          "url": "http://microservice-b:5001",
+          "strip_path": "/api/microservice-b",
+          "preserve_host": false
+        }
+      },
+      {
+        "id": "health-public",
+        "description": "Public health check endpoint - no auth required",
+        "match": {
+          "url": "http://<(localhost|oathkeeper):4455>/health<.*>",
+          "methods": ["GET"]
+        },
+        "authenticators": [{ "handler": "noop" }],
+        "authorizer": { "handler": "allow" },
+        "mutators": [{ "handler": "noop" }],
+        "upstream": {
+          "url": "http://microservice-a:5000"
+        }
+      }
+    ]

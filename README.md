@@ -1,111 +1,122 @@
-# Aetheris IAM — Phase 1 & 2 Dev Setup
+# Aetheris IAM — End-to-End Security Suite
 
-## Architecture
+> 💡 **Confused about how this system works?**
+> Please read the high-level system explanation and analogy in [Aetheris-info.md](Aetheris-info.md) first.
+
+Aetheris IAM is a comprehensive identity and access management (IAM) system implementing OIDC federation, fine-grained RBAC authorization, risk-based step-up multi-factor authentication (MFA), and real-time session revocation.
+
+---
+
+## 🏗️ Architecture
 
 ```
-[Client] ──► [Oathkeeper IAP :4455]
-                  │
-                  ├─ authenticator: JWT  ◄── [Keycloak :8080]  (Phase 1)
-                  │                           OIDC/JWKS
-                  │
-                  ├─ authorizer: OPA  ◄────── [OPA :8181]      (Phase 2)
-                  │              RBAC policy
-                  │
-                  ├─ mutator: header injection
-                  │
-                  ├──► [Microservice A :5000]
+                               ┌────────────────────────────────┐
+                               │       Keycloak (:8080)         │
+                               │      (OIDC / Revocation)       │
+                               └────────────────┬───────────────┘
+                                                │ Introspect
+                                                ▼
+[Client] ──► [Oathkeeper IAP :4455] ──► [OPA Adapter :8182] ──► [OPA :8181]
+                  │                             │ (Authz Check)   (RBAC Policy)
+                  │                             ├─► [CARA Mock :5002]
+                  │                             │   (Risk Assessment)
+                  │                             ▼
+                  ├──► [Microservice A :5000] ──┴── (If Authorized)
                   └──► [Microservice B :5001]
 ```
 
-## Prerequisites
+---
 
-Make sure the following dependencies are installed before setting up the project:
+## 🚀 Development Phases
 
-| Dependency | Required Version / Status | Purpose |
+The project implements four core security pillars:
+
+### 🔐 Phase 1: OIDC Federation
+Keycloak acts as the Identity Provider (IdP) to issue OIDC JSON Web Tokens (JWTs). Ory Oathkeeper acts as the Identity-Aware Proxy (IAP) to intercept client requests, authenticate them via JWKS validation, and extract claims.
+
+### 🛡️ Phase 2: Fine-Grained Authorization
+Open Policy Agent (OPA) evaluates access rules written in Rego based on HTTP method, path, and user roles. Oathkeeper proxies these decisions through the OPA Adapter.
+
+### ⚠️ Phase 3: Risk-Based Step-Up MFA
+If a user is flagged with an elevated risk score (>= 0.6) by the **CARA Risk Engine**, OPA rejects the request with an `mfa_required` response unless the user's token contains the `acr: mfa` claim (indicating step-up MFA was completed).
+
+### 🚫 Phase 4: Session Revocation & Kubernetes
+*   **Fail-Closed Revocation**: OPA Adapter verifies token validity in real-time via Keycloak Introspection (`/token/introspect`). Tokens revoked via OIDC `/revoke` or user logouts (`/logout`) are immediately blocked.
+*   **Kubernetes Migration**: Fully containerized services deployed on a local `k3d` Kubernetes cluster with automated ingress node-ports and configuration maps.
+
+---
+
+## 🛠️ Prerequisites
+
+Ensure the following tools are installed locally:
+
+| Dependency | Required Version | Purpose |
 | :--- | :--- | :--- |
-| **Docker** | `>= 24.x` (with Compose v2) | Running services locally and building container images |
-| **Kubernetes (k3d / minikube)** | Required (e.g. `k3d >= 5.x`) | Local Kubernetes cluster provider for Phase 4 deployment |
-| **kubectl** | Required | Kubernetes command-line tool to deploy and manage cluster resources |
-| **jq** | Required | Command-line JSON parser, used by the integration test scripts |
-| **opa CLI** | Optional | Open Policy Agent CLI for running local policy unit tests |
-| **curl** | Required | Command-line tool to interact with endpoints and obtain tokens |
+| **Docker** | `>= 24.x` | Running containers and building local images |
+| **k3d** | `>= 5.x` | Orchestrating local Kubernetes clusters |
+| **kubectl** | Required | Managing Kubernetes resources |
+| **jq** | Required | JSON parsing in test scripts |
+| **opa CLI** | Optional | Testing Rego policies locally (`opa test`) |
+| **curl** | Required | Executing validation requests |
 
+---
 
-## Run
+## ⚙️ Getting Started
 
+You can run Aetheris IAM in two environments:
+
+### Option A: Local Docker Compose (Development)
+To run the entire stack natively on your host machine ports:
 ```bash
-# Start full stack
+# Start the services
 docker compose up --build
 
-# Wait for Keycloak (~30s), then verify:
+# Wait for Keycloak (~30s), then verify OIDC Discovery:
 curl http://localhost:8080/realms/aetheris/.well-known/openid-configuration
 ```
 
-## Test
-
+### Option B: Local Kubernetes Cluster (k3d)
+We provide a comprehensive deployment orchestration script that automates cluster creation, image builds, registry importing, and resource rollouts:
 ```bash
-# Unit test OPA policies locally (no docker needed)
-opa test policies/ -v
+# Build, import images, create cluster, and deploy manifests
+bash scripts/deploy-k8s.sh
+```
 
-# Full Phase 1-2 integration test
-chmod +x scripts/test-phases.sh
+---
+
+## 🧪 Testing & Validation
+
+### 1. OPA Unit Testing (Local)
+Verify policy correctness locally without starting any containers:
+```bash
+opa test policies/ -v
+```
+
+### 2. End-to-End Integration Suite
+Validate all 4 Phases (OIDC, RBAC, Step-Up MFA, and Session Revocation) against either the Docker Compose or k3d environment:
+```bash
 bash scripts/test-phases.sh
 ```
 
-## Manual Curl Flow
+---
 
-```bash
-# 1. Get token
-TOKEN=$(curl -s -X POST \
-  http://localhost:8080/realms/aetheris/protocol/openid-connect/token \
-  -d "grant_type=password&client_id=oathkeeper&client_secret=oathkeeper-secret-dev" \
-  -d "username=admin-user&password=Admin@123&scope=openid" \
-  | jq -r '.access_token')
+## 👥 Test Users
 
-# 2. Access protected resource via IAP
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:4455/api/microservice-a/data
-
-# 3. Test unauthorized (reader → DELETE → should 403)
-READER=$(curl -s -X POST \
-  http://localhost:8080/realms/aetheris/protocol/openid-connect/token \
-  -d "grant_type=password&client_id=oathkeeper&client_secret=oathkeeper-secret-dev" \
-  -d "username=reader-user&password=Reader@123&scope=openid" \
-  | jq -r '.access_token')
-
-curl -X DELETE \
-  -H "Authorization: Bearer $READER" \
-  http://localhost:4455/api/microservice-a/data/1
-# Expected: 403 Forbidden
-```
-
-## Test Users
-
-| Username       | Password    | Roles                                    |
+| Username       | Password    | Roles / Capabilities                     |
 |----------------|-------------|------------------------------------------|
-| admin-user     | Admin@123   | aetheris-admin, svc-a/b writer           |
-| reader-user    | Reader@123  | service-a-reader, service-b-reader       |
-| service-a-only | SvcA@123    | service-a-reader only (isolation test)   |
+| `admin-user`     | `Admin@123`   | Full admin access, writer on both services |
+| `reader-user`    | `Reader@123`  | Read-only access to A & B                |
+| `service-a-only` | `SvcA@123`    | Isolation test user (read-only on A only) |
 
-## Ports
+---
 
-| Service     | Port |
-|-------------|------|
-| Keycloak    | 8080 |
-| OPA         | 8181 |
-| Oathkeeper  | 4455 (proxy), 4456 (mgmt) |
+## 🔌 Port Mapping Reference
 
-## Development Phases
-
-The project is structured into four distinct development phases:
-
-- **Phase 1: OIDC Federation**
-  - Keycloak issues OIDC token (JWT) $\rightarrow$ Ory Oathkeeper acts as the Identity-Aware Proxy (IAP) to validate incoming tokens.
-- **Phase 2: Fine-Grained Authorization**
-  - Open Policy Agent (OPA) enforces least-privilege authorization policies per service based on user roles and requested resources.
-- **Phase 3: Risk-Based Step-Up MFA**
-  - CARA mock service emits user risk scores $\rightarrow$ elevated scores trigger a step-up Multi-Factor Authentication (MFA) flow.
-- **Phase 4: Session Revocation & Kubernetes**
-  - End-to-end session revocation flow integration.
-  - Kubernetes manifest configurations for deployment on a local `k3d` cluster.
-
+| Service | Host Port (Docker Compose) | K8s NodePort | Internal Port |
+| :--- | :--- | :--- | :--- |
+| **Keycloak** | `8080` | `30080` | `8080` |
+| **Oathkeeper Proxy** | `4455` | `30455` | `4455` |
+| **Oathkeeper Mgmt API** | `4456` | `30456` | `4456` |
+| **CARA Mock** | `5002` | `30002` | `5002` |
+| **OPA Adapter** | `8182` | `30182` | `8182` |
+| **OPA (Engine)** | `8181` | *N/A (ClusterIP)* | `8181` |
