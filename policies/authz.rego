@@ -12,6 +12,40 @@ default allow := false
 allow if {
     token_valid
     role_permitted
+    mfa_satisfied
+}
+
+# ─────────────────────────────────────────────
+# RISK & STEP-UP MFA
+# ─────────────────────────────────────────────
+
+# Default risk score is low (0.0) if not provided
+risk_score := input.risk_score if {
+    input.risk_score != null
+}
+
+risk_score := 0.0 if {
+    input.risk_score == null
+}
+
+is_high_risk if {
+    risk_score >= 0.6
+}
+
+# Check if token has completed MFA (acr claim equals "mfa")
+token_has_mfa if {
+    input.token_claims.acr == "mfa"
+}
+
+default mfa_satisfied := false
+
+mfa_satisfied if {
+    not is_high_risk
+}
+
+mfa_satisfied if {
+    is_high_risk
+    token_has_mfa
 }
 
 # ─────────────────────────────────────────────
@@ -76,6 +110,13 @@ deny_reason := reason if {
         "insufficient_privilege: user roles %v cannot %v on %v",
         [user_roles, input.method, input.service]
     )
+}
+
+deny_reason := reason if {
+    token_valid
+    role_permitted
+    not mfa_satisfied
+    reason := "step_up_mfa_required"
 }
 
 # ─────────────────────────────────────────────

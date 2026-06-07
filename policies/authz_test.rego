@@ -35,6 +35,14 @@ mock_expired_token := {
     "iss": "http://keycloak:8080/realms/aetheris"
 }
 
+mock_admin_mfa_token := {
+    "sub": "user-admin-001",
+    "roles": ["aetheris-admin", "service-a-writer", "service-b-writer"],
+    "exp": 9999999999,
+    "iss": "http://keycloak:8080/realms/aetheris",
+    "acr": "mfa"
+}
+
 # ─────────────────────────────────────────────
 # P1: OIDC FEDERATION — Token validation tests
 # ─────────────────────────────────────────────
@@ -118,4 +126,49 @@ test_deny_reason_on_insufficient_privilege if {
         "method": "DELETE"
     }
     r != null
+}
+
+# ─────────────────────────────────────────────
+# P3: RISK-BASED STEP-UP MFA — Policy tests
+# ─────────────────────────────────────────────
+
+test_low_risk_no_mfa_passes if {
+    allow with input as {
+        "token": "valid.jwt.token",
+        "token_claims": mock_admin_token,
+        "service": "microservice-a",
+        "method": "GET",
+        "risk_score": 0.2
+    }
+}
+
+test_high_risk_no_mfa_denied if {
+    not allow with input as {
+        "token": "valid.jwt.token",
+        "token_claims": mock_admin_token,
+        "service": "microservice-a",
+        "method": "GET",
+        "risk_score": 0.8
+    }
+}
+
+test_high_risk_with_mfa_passes if {
+    allow with input as {
+        "token": "valid.jwt.token",
+        "token_claims": mock_admin_mfa_token,
+        "service": "microservice-a",
+        "method": "GET",
+        "risk_score": 0.8
+    }
+}
+
+test_deny_reason_on_mfa_required if {
+    r := deny_reason with input as {
+        "token": "valid.jwt.token",
+        "token_claims": mock_admin_token,
+        "service": "microservice-a",
+        "method": "GET",
+        "risk_score": 0.8
+    }
+    r == "step_up_mfa_required"
 }

@@ -24,15 +24,16 @@ section() { echo -e "\n${YELLOW}══ $1 ══${NC}"; }
 # ─────────────────────────────────────────────────────────────────
 get_token() {
   local username=$1 password=$2
+  local scope=${3:-openid}
   curl -sf -X POST \
     "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "grant_type=password" \
-    -d "client_id=${CLIENT_ID}" \
-    -d "client_secret=${CLIENT_SECRET}" \
-    -d "username=${username}" \
-    -d "password=${password}" \
-    -d "scope=openid" | jq -r '.access_token'
+    --data-urlencode "grant_type=password" \
+    --data-urlencode "client_id=${CLIENT_ID}" \
+    --data-urlencode "client_secret=${CLIENT_SECRET}" \
+    --data-urlencode "username=${username}" \
+    --data-urlencode "password=${password}" \
+    --data-urlencode "scope=${scope}" | jq -r '.access_token'
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -64,6 +65,9 @@ ROLES=$(echo "$ADMIN_TOKEN" | cut -d'.' -f2 | base64 -d 2>/dev/null | jq -r '.ro
 # PHASE 2: IAP (Oathkeeper) + OPA Policy Tests
 # ─────────────────────────────────────────────────────────────────
 section "PHASE 2 — IAP (Oathkeeper) + OPA Policy Engine"
+
+# Reset CARA mock risk scores at the start to ensure clean state
+curl -s -X POST "http://localhost:5002/mock/reset" > /dev/null
 
 echo "  Checking OPA health..."
 OPA_STATUS=$(curl -so /dev/null -w "%{http_code}" "${OPA_URL}/health")
@@ -112,11 +116,67 @@ STATUS=$(curl -so /dev/null -w "%{http_code}" \
 [[ "$STATUS" == "401" ]] && pass "unauthenticated → 401" || fail "unauthenticated → $STATUS (expected 401)"
 
 # ─────────────────────────────────────────────────────────────────
+# PHASE 3: Risk-Based Step-Up MFA Tests
+# ─────────────────────────────────────────────────────────────────
+section "PHASE 3 — Risk-Based Step-Up MFA"
+
+CARA_URL="http://localhost:5002"
+
+echo "  Checking CARA mock service health..."
+CARA_STATUS=$(curl -so /dev/null -w "%{http_code}" "${CARA_URL}/health")
+[[ "$CARA_STATUS" == "200" ]] && pass "CARA service healthy" || fail "CARA health check failed"
+
+# Reset any mock risks
+curl -s -X POST "${CARA_URL}/mock/reset" > /dev/null
+
+echo "  [3a] Low Risk Admin User → GET /api/microservice-a (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "low risk access permitted (200)" || fail "low risk access failed (HTTP $STATUS)"
+
+echo "  [3b] Mocking Elevated Risk (0.85) for admin-user..."
+MOCK_RES=$(curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin-user","risk_score":0.85}' \
+  "${CARA_URL}/mock/risk")
+[[ "$MOCK_RES" == *"admin-user"* ]] && pass "elevated risk mocked successfully" || fail "failed to mock elevated risk"
+
+echo "  [3c] High Risk Admin User without MFA → GET /api/microservice-a (expect 403 / mfa_required)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+# Since Ory Oathkeeper intercepts the 403 response and replaces the body, we verify Oathkeeper returns 403,
+# and query the OPA Adapter directly to confirm it returns the correct step-up MFA payload.
+ADAPTER_STATUS=$(curl -so /dev/null -w "%{http_code}" -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"input\":{\"token\":\"$ADMIN_TOKEN\",\"token_claims\":{\"sub\":\"c8dd633e-4cd8-4429-83d4-e5bb299b0585\",\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"]},\"service\":\"microservice-a\",\"method\":\"GET\"}}" \
+  "http://localhost:8182/authz")
+ADAPTER_BODY=$(curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"input\":{\"token\":\"$ADMIN_TOKEN\",\"token_claims\":{\"sub\":\"c8dd633e-4cd8-4429-83d4-e5bb299b0585\",\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"]},\"service\":\"microservice-a\",\"method\":\"GET\"}}" \
+  "http://localhost:8182/authz")
+[[ "$STATUS" == "403" && "$ADAPTER_STATUS" == "403" && "$ADAPTER_BODY" == *"mfa_required"* ]] && pass "access denied with mfa_required payload (403)" || fail "MFA enforcement failed (Oathkeeper: $STATUS, Adapter: $ADAPTER_STATUS, Adapter body: $ADAPTER_BODY)"
+
+echo "  [3d] Fetching Step-up MFA token for admin-user..."
+ADMIN_MFA_TOKEN=$(get_token "admin-user" "Admin@123" "openid mfa")
+[[ -n "$ADMIN_MFA_TOKEN" && "$ADMIN_MFA_TOKEN" != "null" ]] && pass "admin-user step-up token issued" || fail "step-up token issue failed"
+
+echo "  [3e] High Risk Admin User with MFA → GET /api/microservice-a (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $ADMIN_MFA_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "high risk + MFA access permitted (200)" || fail "high risk + MFA access failed (HTTP $STATUS)"
+
+# Reset mock risks
+curl -s -X POST "${CARA_URL}/mock/reset" > /dev/null
+
+# ─────────────────────────────────────────────────────────────────
 # SUMMARY
 # ─────────────────────────────────────────────────────────────────
 echo ""
 echo "═════════════════════════════════════════"
 echo -e "  Results: ${GREEN}${PASS} passed${NC} / ${RED}${FAIL} failed${NC}"
 echo "═════════════════════════════════════════"
-[[ "$FAIL" -eq 0 ]] && echo -e "${GREEN}  All tests passed. Phase 1-2 validated.${NC}" || \
+[[ "$FAIL" -eq 0 ]] && echo -e "${GREEN}  All tests passed. Phase 1-3 validated.${NC}" || \
   echo -e "${RED}  Some tests failed. Check service logs.${NC}"

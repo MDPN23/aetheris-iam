@@ -18,9 +18,40 @@ def health():
     return jsonify({"status": "ok", "service": SERVICE_NAME}), 200
 
 
+def get_risk_score(username):
+    try:
+        cara_req = urllib.request.Request(
+            "http://cara-mock:5002/assess",
+            data=json.dumps({"username": username}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(cara_req, timeout=2) as res:
+            data = json.loads(res.read().decode("utf-8"))
+            return data.get("risk_score", 0.1)
+    except Exception as e:
+        print(f"Error querying CARA: {e}", flush=True)
+        return 0.1
+
+
 @app.route("/authz", methods=["POST"])
 def authz():
     payload = request.get_json() or {}
+    print(f"DEBUG: payload received: {json.dumps(payload)}", flush=True)
+    
+    # Extract username and fetch risk score from CARA
+    token_claims = payload.get("input", {}).get("token_claims", {}) or {}
+    username = token_claims.get("preferred_username") or token_claims.get("sub")
+    print(f"DEBUG: extracted username: {username}", flush=True)
+    
+    risk_score = 0.1
+    if username:
+        risk_score = get_risk_score(username)
+        
+    # Inject risk_score into OPA payload
+    if "input" not in payload:
+        payload["input"] = {}
+    payload["input"]["risk_score"] = risk_score
     
     # Forward the request to OPA
     req_body = json.dumps(payload).encode("utf-8")
@@ -42,9 +73,16 @@ def authz():
             if allowed:
                 return jsonify(result), 200
             else:
+                reason = result.get("deny_reason", "Access Denied")
+                if reason == "step_up_mfa_required":
+                    return jsonify({
+                        "error": "mfa_required",
+                        "deny_reason": reason,
+                        "message": "Step-up MFA required due to elevated risk"
+                    }), 403
                 return jsonify({
                     "error": "Forbidden",
-                    "deny_reason": result.get("deny_reason", "Access Denied")
+                    "deny_reason": reason
                 }), 403
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8")

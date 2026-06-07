@@ -130,6 +130,28 @@ services:
       timeout: 3s
       retries: 3
 
+  cara-mock:
+    build:
+      context: ./k8s/microservices
+      dockerfile: Dockerfile
+      args:
+        SERVICE_FILE: cara_mock.py
+        SERVICE_PORT: 5002
+    container_name: aetheris-cara-mock
+    environment:
+      PORT: "5002"
+    expose:
+      - "5002"
+    ports:
+      - "5002:5002"
+    networks:
+      - aetheris-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   opa-adapter:
     build:
       context: ./k8s/microservices
@@ -142,8 +164,12 @@ services:
       PORT: "8182"
     expose:
       - "8182"
+    ports:
+      - "8182:8182"
     depends_on:
       opa:
+        condition: service_healthy
+      cara-mock:
         condition: service_healthy
     networks:
       - aetheris-net
@@ -152,3 +178,4 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+

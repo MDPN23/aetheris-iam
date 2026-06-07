@@ -15,7 +15,7 @@
       "handler": "remote_json",
       "config": {
         "remote": "http://opa-adapter:8182/authz",
-        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{\"sub\":\"{{ .Subject }}\",\"roles\":{{ .Extra.roles | toJson }},\"exp\":{{ .Extra.exp }},\"iss\":\"{{ .Extra.iss }}\"},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\"}}"
       }
     },
     "mutators": [
@@ -55,7 +55,7 @@
       "handler": "remote_json",
       "config": {
         "remote": "http://opa-adapter:8182/authz",
-        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{\"sub\":\"{{ .Subject }}\",\"roles\":{{ .Extra.roles | toJson }},\"exp\":{{ .Extra.exp }},\"iss\":\"{{ .Extra.iss }}\"},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+        "payload": "{\"input\":{\"token\":\"{{ .Extra.token }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\"}}"
       }
     },
     "mutators": [

@@ -52,11 +52,7 @@ authorizers:
         {
           "input": {
             "token":        "{{ .Extra.token }}",
-            "token_claims": {
-              "sub":   "{{ .Subject }}",
-              "roles": {{ .Extra.roles | toJson }},
-              "exp":   {{ .Extra.exp }}
-            },
+            "token_claims": {{ .Extra | toJson }},
             "service": "{{ index .MatchContext.RegexpCaptureGroups 0 }}",
             "method":  "{{ .MatchContext.Method }}"
           }
