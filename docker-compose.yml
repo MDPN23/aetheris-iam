@@ -36,7 +36,7 @@ services:
     networks:
       - aetheris-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/realms/aetheris/.well-known/openid-configuration || exit 1"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /realms/aetheris/.well-known/openid-configuration HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep '200 OK' <&3"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -44,7 +44,7 @@ services:
 
   # ── Phase 2: Policy Engine ────────────────────────────────────
   opa:
-    image: openpolicyagent/opa:0.65.0
+    image: openpolicyagent/opa:0.65.0-debug
     container_name: aetheris-opa
     command:
       - run
@@ -105,7 +105,7 @@ services:
     networks:
       - aetheris-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -125,7 +125,30 @@ services:
     networks:
       - aetheris-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  opa-adapter:
+    build:
+      context: ./k8s/microservices
+      dockerfile: Dockerfile
+      args:
+        SERVICE_FILE: opa_adapter.py
+        SERVICE_PORT: 8182
+    container_name: aetheris-opa-adapter
+    environment:
+      PORT: "8182"
+    expose:
+      - "8182"
+    depends_on:
+      opa:
+        condition: service_healthy
+    networks:
+      - aetheris-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8182/health')"]
       interval: 10s
       timeout: 3s
       retries: 3

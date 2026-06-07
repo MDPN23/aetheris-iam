@@ -1,6 +1,8 @@
 package aetheris.authz_test
 
 import future.keywords.if
+import data.aetheris.authz.allow
+import data.aetheris.authz.deny_reason
 
 # ─────────────────────────────────────────────
 # TEST FIXTURES

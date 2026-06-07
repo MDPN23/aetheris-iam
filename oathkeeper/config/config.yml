@@ -9,7 +9,7 @@ serve:
     port: 4456
 
 access_rules:
-  matching_strategy: glob
+  matching_strategy: regexp
   repositories:
     - file:///etc/config/oathkeeper/rules/rules.json
 
@@ -27,8 +27,7 @@ authenticators:
       jwks_urls:
         - "http://keycloak:8080/realms/aetheris/protocol/openid-connect/certs"
       token_from:
-        - header: Authorization
-          prefix: "Bearer "
+        header: Authorization
       # Claims to extract and forward
       required_scope: []
       trusted_issuers:
@@ -47,7 +46,7 @@ authorizers:
   remote_json:
     enabled: true
     config:
-      remote: "http://opa:8181/v1/data/aetheris/authz"
+      remote: "http://opa-adapter:8182/authz"
       forward_response_headers_to_upstream: []
       payload: |
         {
@@ -58,8 +57,8 @@ authorizers:
               "roles": {{ .Extra.roles | toJson }},
               "exp":   {{ .Extra.exp }}
             },
-            "service": "{{ .MatchContext.RegexpCaptureGroups[0] }}",
-            "method":  "{{ .Request.Method }}"
+            "service": "{{ index .MatchContext.RegexpCaptureGroups 0 }}",
+            "method":  "{{ .MatchContext.Method }}"
           }
         }
 
@@ -71,12 +70,11 @@ mutators:
         X-Aetheris-Subject:  "{{ .Subject }}"
         X-Aetheris-Roles:    "{{ .Extra.roles | toJson }}"
         X-Aetheris-Issuer:   "{{ .Extra.iss }}"
-        X-Request-ID:        "{{ .MatchContext.RegexpCaptureGroups[0] }}-{{ randAlpha 8 }}"
+        X-Request-ID:        "{{ index .MatchContext.RegexpCaptureGroups 0 }}-{{ randAlpha 8 }}"
 
 log:
   level: debug
   format: json
   leak_sensitive_values: false 
 
-tracing:
-  provider: ""
+
