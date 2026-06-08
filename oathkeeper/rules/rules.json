@@ -1,7 +1,7 @@
 [
   {
     "id": "microservice-a-all-methods",
-    "description": "Phase 2: OIDC + OPA policy enforcement for Microservice A",
+    "description": "OIDC + OPA policy enforcement for Microservice A (header-based tenant routing)",
     "match": {
       "url": "http://<(localhost|oathkeeper):4455>/api/microservice-a<.*>",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
@@ -15,7 +15,7 @@
       "handler": "remote_json",
       "config": {
         "remote": "http://opa-adapter:8182/authz",
-        "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+        "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-a\",\"method\":\"{{ .MatchContext.Method }}\",\"tenant\":\"{{ if index .MatchContext.Header \"X-Tenant-Id\" }}{{ index (index .MatchContext.Header \"X-Tenant-Id\") 0 }}{{ else }}aetheris{{ end }}\"}}"
       }
     },
     "mutators": [
@@ -41,7 +41,7 @@
   },
   {
     "id": "microservice-b-all-methods",
-    "description": "Phase 2: OIDC + OPA policy enforcement for Microservice B",
+    "description": "OIDC + OPA policy enforcement for Microservice B (header-based tenant routing)",
     "match": {
       "url": "http://<(localhost|oathkeeper):4455>/api/microservice-b<.*>",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
@@ -55,7 +55,7 @@
       "handler": "remote_json",
       "config": {
         "remote": "http://opa-adapter:8182/authz",
-        "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\"}}"
+        "payload": "{\"input\":{\"token\":\"{{ if index .MatchContext.Header \"Authorization\" }}{{ index (index .MatchContext.Header \"Authorization\") 0 }}{{ else }}{{ end }}\",\"token_claims\":{{ .Extra | toJson }},\"service\":\"microservice-b\",\"method\":\"{{ .MatchContext.Method }}\",\"tenant\":\"{{ if index .MatchContext.Header \"X-Tenant-Id\" }}{{ index (index .MatchContext.Header \"X-Tenant-Id\") 0 }}{{ else }}aetheris{{ end }}\"}}"
       }
     },
     "mutators": [

@@ -1,0 +1,14 @@
+{
+  "tenants": [
+    {
+      "id": "tenant-a",
+      "display_name": "Tenant Alpha",
+      "enabled": true
+    },
+    {
+      "id": "tenant-b",
+      "display_name": "Tenant Bravo",
+      "enabled": true
+    }
+  ]
+}

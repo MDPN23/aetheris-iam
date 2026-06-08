@@ -11,9 +11,35 @@ default allow := false
 
 allow if {
     token_valid
+    tenant_authorized
     role_permitted
     mfa_satisfied
 }
+
+# Extract tenant ID from token issuer URL
+# e.g., "http://localhost:8080/realms/tenant-a" -> "tenant-a"
+token_tenant := tenant if {
+    iss := input.token_claims.iss
+    contains(iss, "/realms/")
+    parts := split(iss, "/realms/")
+    parts_sub := split(parts[1], "/")
+    tenant := parts_sub[0]
+}
+
+# Tenant authorization: verify X-Tenant-Id header matches the token's realm
+tenant_authorized if {
+    input.tenant == token_tenant
+}
+
+# If no tenant header was sent (null or empty), allow — backward compatible
+tenant_authorized if {
+    not input.tenant
+}
+
+tenant_authorized if {
+    input.tenant == ""
+}
+
 
 # ─────────────────────────────────────────────
 # RISK & STEP-UP MFA
@@ -105,6 +131,16 @@ deny_reason := reason if {
 
 deny_reason := reason if {
     token_valid
+    not tenant_authorized
+    reason := sprintf(
+        "tenant_mismatch: requested tenant '%v' does not match token tenant '%v'",
+        [input.tenant, token_tenant]
+    )
+}
+
+deny_reason := reason if {
+    token_valid
+    tenant_authorized
     not role_permitted
     reason := sprintf(
         "insufficient_privilege: user roles %v cannot %v on %v",
@@ -114,6 +150,7 @@ deny_reason := reason if {
 
 deny_reason := reason if {
     token_valid
+    tenant_authorized
     role_permitted
     not mfa_satisfied
     reason := "step_up_mfa_required"

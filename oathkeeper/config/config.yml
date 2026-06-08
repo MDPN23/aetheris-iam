@@ -26,6 +26,8 @@ authenticators:
     config:
       jwks_urls:
         - "http://keycloak:8080/realms/aetheris/protocol/openid-connect/certs"
+        - "http://keycloak:8080/realms/tenant-a/protocol/openid-connect/certs"
+        - "http://keycloak:8080/realms/tenant-b/protocol/openid-connect/certs"
       token_from:
         header: Authorization
       # Claims to extract and forward
@@ -33,6 +35,10 @@ authenticators:
       trusted_issuers:
         - "http://keycloak:8080/realms/aetheris"
         - "http://localhost:8080/realms/aetheris"
+        - "http://keycloak:8080/realms/tenant-a"
+        - "http://localhost:8080/realms/tenant-a"
+        - "http://keycloak:8080/realms/tenant-b"
+        - "http://localhost:8080/realms/tenant-b"
 
   # Fallback: deny all unauthenticated
   noop:

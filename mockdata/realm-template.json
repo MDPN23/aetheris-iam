@@ -1,0 +1,129 @@
+{
+  "realm": "{{TENANT_ID}}",
+  "displayName": "Aetheris Tenant - {{TENANT_ID}}",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "refreshTokenMaxReuse": 0,
+  "revokeRefreshToken": true,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+
+  "clients": [
+    {
+      "clientId": "oathkeeper",
+      "name": "Aetheris IAP - Oathkeeper",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "oathkeeper-secret-dev",
+      "redirectUris": [
+        "http://localhost:4455/*",
+        "http://oathkeeper:4455/*"
+      ],
+      "webOrigins": ["*"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "oathkeeper",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "username-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ],
+      "optionalClientScopes": [
+        "mfa"
+      ]
+    },
+    {
+      "clientId": "microservice-a",
+      "name": "Microservice A - Protected Resource",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": false
+    },
+    {
+      "clientId": "microservice-b",
+      "name": "Microservice B - Protected Resource",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": false
+    }
+  ],
+
+  "clientScopes": [
+    {
+      "name": "mfa",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Step-Up MFA"
+      },
+      "protocolMappers": [
+        {
+          "name": "acr-mfa-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "acr",
+            "claim.value": "mfa",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "identityProviders": [],
+  "components": {}
+}

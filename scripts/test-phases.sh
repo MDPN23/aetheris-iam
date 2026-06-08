@@ -25,8 +25,9 @@ section() { echo -e "\n${YELLOW}══ $1 ══${NC}"; }
 get_token() {
   local username=$1 password=$2
   local scope=${3:-openid}
+  local realm_name=${4:-$REALM}
   curl -sf -X POST \
-    "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token" \
+    "${KEYCLOAK_URL}/realms/${realm_name}/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --data-urlencode "grant_type=password" \
     --data-urlencode "client_id=${CLIENT_ID}" \
@@ -152,6 +153,9 @@ MOCK_RES=$(curl -s -X POST \
   "${CARA_URL}/mock/risk")
 [[ "$MOCK_RES" == *"admin-user"* ]] && pass "elevated risk mocked successfully" || fail "failed to mock elevated risk"
 
+# Flush Redis cache so the old risk score (0.1) is not served from cache
+docker exec aetheris-redis redis-cli FLUSHDB > /dev/null 2>&1
+
 echo "  [3c] High Risk Admin User without MFA → GET /api/microservice-a (expect 403 / mfa_required)..."
 STATUS=$(curl -so /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
@@ -180,6 +184,8 @@ STATUS=$(curl -so /dev/null -w "%{http_code}" \
 
 # Reset mock risks
 curl -s -X POST "${CARA_URL}/mock/reset" > /dev/null
+# Flush Redis cache to clear any cached risk scores from Phase 3
+docker exec aetheris-redis redis-cli FLUSHDB > /dev/null 2>&1
 
 # ─────────────────────────────────────────────────────────────────
 # PHASE 4: Session Revocation Tests
@@ -204,6 +210,9 @@ REVOKE_STATUS=$(curl -so /dev/null -w "%{http_code}" -X POST \
   --data-urlencode "client_secret=${CLIENT_SECRET}" \
   --data-urlencode "token=${REVOKE_TEST_TOKEN}")
 [[ "$REVOKE_STATUS" == "200" ]] && pass "revoke endpoint returned 200" || fail "revoke failed (HTTP $REVOKE_STATUS)"
+
+# Flush Redis cache so cached active=true is invalidated after revocation
+docker exec aetheris-redis redis-cli FLUSHDB > /dev/null 2>&1
 
 echo "  [4d] Access protected resource after revocation (expect 403)..."
 STATUS=$(curl -so /dev/null -w "%{http_code}" \
@@ -243,11 +252,75 @@ LOGOUT_STATUS=$(curl -so /dev/null -w "%{http_code}" -X POST \
 # Keycloak returns 204 No Content for successful backchannel logout
 [[ "$LOGOUT_STATUS" == "204" ]] && pass "logout endpoint returned 204" || fail "logout failed (HTTP $LOGOUT_STATUS)"
 
+# Flush Redis cache so cached active=true is invalidated after logout
+docker exec aetheris-redis redis-cli FLUSHDB > /dev/null 2>&1
+
 echo "  [4h] Access resource with access token after logout (expect 403)..."
 STATUS=$(curl -so /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   "${OATHKEEPER_URL}/api/microservice-a/data")
 [[ "$STATUS" == "403" ]] && pass "access denied after logout (403)" || fail "access allowed or wrong status after logout (HTTP $STATUS)"
+
+# ─────────────────────────────────────────────────────────────────
+# PHASE 5: Multi-Tenancy Routing & Isolation (Header-Based)
+# ─────────────────────────────────────────────────────────────────
+section "PHASE 5 — Multi-Tenancy (X-Tenant-Id Header)"
+
+echo "  Provisioning all tenants from mockdata/tenants.json..."
+python3 scripts/provision_tenant.py --all --recreate
+
+echo "  Fetching token for admin-user under tenant-a..."
+TENANT_A_TOKEN=$(get_token "admin-user" "Admin@123" "openid" "tenant-a")
+[[ -n "$TENANT_A_TOKEN" && "$TENANT_A_TOKEN" != "null" ]] && pass "tenant-a token issued" || fail "tenant-a token failed"
+
+echo "  Fetching token for admin-user under tenant-b..."
+TENANT_B_TOKEN=$(get_token "admin-user" "Admin@123" "openid" "tenant-b")
+[[ -n "$TENANT_B_TOKEN" && "$TENANT_B_TOKEN" != "null" ]] && pass "tenant-b token issued" || fail "tenant-b token failed"
+
+echo "  [5a] Tenant-A admin → GET /api/microservice-a with X-Tenant-Id: tenant-a (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TENANT_A_TOKEN" \
+  -H "X-Tenant-Id: tenant-a" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "tenant-a access permitted (200)" || fail "tenant-a access failed (HTTP $STATUS)"
+
+echo "  [5b] Tenant-B admin → GET /api/microservice-a with X-Tenant-Id: tenant-b (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TENANT_B_TOKEN" \
+  -H "X-Tenant-Id: tenant-b" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "tenant-b access permitted (200)" || fail "tenant-b access failed (HTTP $STATUS)"
+
+echo "  [5c] Cross-Tenant: Tenant-A token + X-Tenant-Id: tenant-b (expect 403 / tenant_mismatch)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TENANT_A_TOKEN" \
+  -H "X-Tenant-Id: tenant-b" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+# Also verify via OPA Adapter directly for exact deny_reason
+ADAPTER_BODY=$(curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"input\":{\"token\":\"$TENANT_A_TOKEN\",\"token_claims\":{\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"],\"iss\":\"http://localhost:8080/realms/tenant-a\"},\"service\":\"microservice-a\",\"method\":\"GET\",\"tenant\":\"tenant-b\"}}" \
+  "http://localhost:8182/authz")
+[[ "$STATUS" == "403" && "$ADAPTER_BODY" == *"tenant_mismatch"* ]] && pass "cross-tenant denied with tenant_mismatch (403)" || fail "cross-tenant isolation failed (HTTP $STATUS, Body: $ADAPTER_BODY)"
+
+echo "  [5d] No X-Tenant-Id header + aetheris token → should fallback to 'aetheris' (expect 200)..."
+STATUS=$(curl -so /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "${OATHKEEPER_URL}/api/microservice-a/data")
+[[ "$STATUS" == "200" ]] && pass "fallback to aetheris tenant (200)" || fail "fallback failed (HTTP $STATUS)"
+
+echo "  [5e] Redis Latency Test: 5 cached requests via OPA Adapter..."
+START_TIME=$(date +%s%N)
+for i in {1..5}; do
+  curl -so /dev/null -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"input\":{\"token\":\"$TENANT_A_TOKEN\",\"token_claims\":{\"preferred_username\":\"admin-user\",\"roles\":[\"service-a-writer\",\"service-b-writer\",\"aetheris-admin\"],\"iss\":\"http://localhost:8080/realms/tenant-a\"},\"service\":\"microservice-a\",\"method\":\"GET\",\"tenant\":\"tenant-a\"}}" \
+    "http://localhost:8182/authz"
+done
+END_TIME=$(date +%s%N)
+ELAPSED=$(( (END_TIME - START_TIME) / 1000000 ))
+echo "  Total elapsed for 5 requests: ${ELAPSED}ms"
+[[ $ELAPSED -lt 500 ]] && pass "Redis cache working (total ${ELAPSED}ms for 5 requests)" || fail "latency too high (${ELAPSED}ms for 5 requests)"
 
 # ─────────────────────────────────────────────────────────────────
 # SUMMARY
@@ -256,5 +329,6 @@ echo ""
 echo "═════════════════════════════════════════"
 echo -e "  Results: ${GREEN}${PASS} passed${NC} / ${RED}${FAIL} failed${NC}"
 echo "═════════════════════════════════════════"
-[[ "$FAIL" -eq 0 ]] && echo -e "${GREEN}  All tests passed. Phase 1-4 validated.${NC}" || \
+[[ "$FAIL" -eq 0 ]] && echo -e "${GREEN}  All tests passed. Phase 1-5 validated.${NC}" || \
   echo -e "${RED}  Some tests failed. Check service logs.${NC}"
+

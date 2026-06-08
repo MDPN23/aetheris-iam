@@ -1,0 +1,8 @@
+{
+  "_comment": "Default risk profiles for CARA mock. Key is tenant:username or username (fallback).",
+  "defaults": {
+    "risk_score": 0.1,
+    "level": "low"
+  },
+  "profiles": {}
+}
