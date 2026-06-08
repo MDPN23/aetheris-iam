@@ -1,4 +1,36 @@
+# Existing project documents
 idaas_commercial_plan.md
 security_threat_model_plan.md
 mvp_setup_and_demo_guide.md
 plan_execution.md
+
+# Local Python dependencies for Linter
+k8s/microservices/redis/
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# Node.js dependencies & builds
+node_modules/
+.next/
+.turbo/
+dist/
+out/
+build/
+.npm
+.eslintcache
+
+# Generated OPA bundle tarballs
+*-bundle.tar.gz
+*.tar.gz
+
+# OS files
+.DS_Store
+Thumbs.db

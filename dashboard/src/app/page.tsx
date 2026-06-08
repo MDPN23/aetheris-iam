@@ -117,9 +117,15 @@ export default function Dashboard() {
     fetchTenants();
     fetchUsers();
     fetchRiskProfiles();
-    fetchPolicy();
     generateMockLogs();
   }, []);
+
+  // Fetch tenant-specific policy when selected tenant changes
+  useEffect(() => {
+    if (selectedTenant) {
+      fetchPolicy(selectedTenant);
+    }
+  }, [selectedTenant]);
 
   // Update password in sandbox when user changes
   useEffect(() => {
@@ -178,9 +184,9 @@ export default function Dashboard() {
     }
   };
 
-  const fetchPolicy = async () => {
+  const fetchPolicy = async (tenantId: string = selectedTenant) => {
     try {
-      const res = await fetch("/api/policies");
+      const res = await fetch(`/api/policies?tenantId=${tenantId}`);
       const data = await res.json();
       if (data.rego) setRegoPolicy(data.rego);
     } catch (err) {
@@ -409,7 +415,7 @@ export default function Dashboard() {
   const handleSavePolicy = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/policies", {
+      const res = await fetch(`/api/policies?tenantId=${selectedTenant}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

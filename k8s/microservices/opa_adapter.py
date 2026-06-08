@@ -174,10 +174,14 @@ def authz():
     if "tenant" not in payload["input"]:
         payload["input"]["tenant"] = tenant
     
-    # Forward the request to OPA
+    # Forward the request to OPA (namespaced per tenant)
+    tenant_clean = tenant.replace("-", "_")
+    opa_url = f"http://opa:8181/v1/data/tenants/{tenant_clean}/aetheris/authz"
+    print(f"DEBUG: querying OPA at {opa_url}", flush=True)
+    
     req_body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        OPA_URL,
+        opa_url,
         data=req_body,
         headers={"Content-Type": "application/json"},
         method="POST"
@@ -187,8 +191,22 @@ def authz():
         with urllib.request.urlopen(req) as res:
             response_body = res.read().decode("utf-8")
             data = json.loads(response_body)
-            
             result = data.get("result", {})
+            
+            # Fallback to global policy if tenant policy is not found or empty
+            if not result or "allow" not in result:
+                fallback_url = "http://opa:8181/v1/data/aetheris/authz"
+                print(f"DEBUG: namespaced result empty, querying fallback OPA at {fallback_url}", flush=True)
+                fallback_req = urllib.request.Request(
+                    fallback_url,
+                    data=req_body,
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(fallback_req) as fb_res:
+                    data = json.loads(fb_res.read().decode("utf-8"))
+                    result = data.get("result", {})
+            
             allowed = result.get("allow", False)
             
             if allowed:

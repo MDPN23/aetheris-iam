@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=http://json-schema.org/draft-07/schema#
+services:
+  aetheris-control-plane:
+    url: http://control-plane:8183
+
+bundles:
+  tenant-a:
+    service: aetheris-control-plane
+    resource: bundles/tenant-a/bundle.tar.gz
+    polling:
+      min_delay_seconds: 5
+      max_delay_seconds: 10
+
+  tenant-b:
+    service: aetheris-control-plane
+    resource: bundles/tenant-b/bundle.tar.gz
+    polling:
+      min_delay_seconds: 5
+      max_delay_seconds: 10

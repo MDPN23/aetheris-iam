@@ -122,6 +122,23 @@ def provision_tenant(token, tenant_id, display_name, recreate=False):
     realm_data = build_realm(tenant_id, display_name)
     create_realm(token, realm_data)
 
+    # Trigger database schema migrations for logical segregation
+    print(f"  → Running database migration for logical segregation ({tenant_id})...")
+    import subprocess
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    migration_script = os.path.join(script_dir, "db_migrate_tenant.py")
+    try:
+        cmd = [sys.executable, migration_script, "--tenant", tenant_id]
+        if recreate:
+            cmd.append("--recreate")
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        print(f"  ✓ Database migration complete.")
+        if res.stdout:
+            print(res.stdout)
+    except subprocess.CalledProcessError as err:
+        print(f"  ✗ Database migration failed: {err.stderr or err.stdout}")
+        sys.exit(1)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Aetheris - Tenant Realm Provisioner")
