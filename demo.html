@@ -543,18 +543,19 @@
 
             <!-- User Selector -->
             <div class="form-group">
-                <label for="userSelect">1. Identity (OIDC User)</label>
+                <label for="userSelect">1. Authenticate Identity (OIDC User)</label>
                 <select id="userSelect" onchange="onUserChange()">
                     <option value="admin-user">admin-user (Roles: admin, writer)</option>
                     <option value="reader-user">reader-user (Roles: reader)</option>
                     <option value="service-a-only">service-a-only (Roles: svc-a-reader)</option>
+                    <option value="unauth-user">Guest / Unauthenticated (No JWT Token)</option>
                 </select>
             </div>
 
             <!-- Action/Method Selector -->
             <div class="form-group">
                 <label for="actionSelect">2. Action & Endpoint</label>
-                <select id="actionSelect">
+                <select id="actionSelect" onchange="updateLiveExplainer()">
                     <option value="GET_a">GET /api/microservice-a/data</option>
                     <option value="POST_a">POST /api/microservice-a/data</option>
                     <option value="DELETE_a">DELETE /api/microservice-a/data/1</option>
@@ -575,16 +576,22 @@
             <!-- Toggles for session and MFA -->
             <div class="toggle-group">
                 <div class="toggle-item">
-                    <span>Perform Step-Up MFA?</span>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span>Perform Step-Up MFA?</span>
+                        <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Simulasi verifikasi 2FA. Wajib jika Risk &ge; 0.60</span>
+                    </div>
                     <label class="switch">
-                        <input type="checkbox" id="mfaToggle">
+                        <input type="checkbox" id="mfaToggle" onchange="updateLiveExplainer()">
                         <span class="slider-switch"></span>
                     </label>
                 </div>
                 <div class="toggle-item">
-                    <span>Revoke User Session?</span>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span>Revoke User Session?</span>
+                        <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Simulasi sesi ditutup paksa/logout dari server</span>
+                    </div>
                     <label class="switch">
-                        <input type="checkbox" id="revokeToggle">
+                        <input type="checkbox" id="revokeToggle" onchange="updateLiveExplainer()">
                         <span class="slider-switch"></span>
                     </label>
                 </div>
@@ -716,6 +723,11 @@
                 name: "service-a-only",
                 sub: "b0b2e811-9e23-455b-80a5-f8a48c4d29f8",
                 roles: ["service-a-reader"]
+            },
+            "unauth-user": {
+                name: "Guest (Unauthenticated)",
+                sub: "N/A",
+                roles: []
             }
         };
 
@@ -731,13 +743,61 @@
             }
         };
 
+        function updateLiveExplainer() {
+            const userKey = document.getElementById("userSelect").value;
+            const actionKey = document.getElementById("actionSelect").value;
+            const riskScore = parseFloat(document.getElementById("riskSlider").value);
+            const mfaDone = document.getElementById("mfaToggle").checked;
+            const sessionRevoked = document.getElementById("revokeToggle").checked;
+
+            const user = users[userKey];
+            const parts = actionKey.split("_");
+            const method = parts[0];
+            const serviceKey = parts[1] === 'a' ? 'microservice-a' : 'microservice-b';
+            const endpoint = parts[1] === 'a' ? `/api/microservice-a/data` : `/api/microservice-b/events`;
+            const allowedRoles = permission_matrix[serviceKey][method] || [];
+
+            let explainHTML = `<div style="font-size: 12px; margin-bottom: 12px;"><strong>Analisis Evaluasi Parameter:</strong><ul style="margin-top: 6px; margin-left: 16px; padding: 0; color: var(--text-muted);">`;
+            explainHTML += `<li><strong>Role User Ini:</strong> <code>${user.roles.join(', ')}</code></li>`;
+            explainHTML += `<li><strong>Role yang Diperbolehkan:</strong> <code>${allowedRoles.join(' / ')}</code></li></ul></div>`;
+
+            if (userKey === 'unauth-user') {
+                explainHTML += `<div style="padding: 10px; background: #FEF2F2; border-left: 3px solid var(--color-error); border-radius: 4px; margin-bottom: 8px; font-size: 12px;"><strong>🚫 Unauthenticated (No Token):</strong> Anda bertindak sebagai pengguna yang belum login (tidak punya token JWT). Gateway IAP (Oathkeeper) akan langsung menolak request di titik paling depan. Evaluasi risk, MFA, atau session lainnya akan diabaikan.</div>`;
+            } else {
+                if (sessionRevoked) {
+                    explainHTML += `<div style="padding: 10px; background: #FEF2F2; border-left: 3px solid var(--color-error); border-radius: 4px; margin-bottom: 8px; font-size: 12px;"><strong>⚠️ Session Revoked:</strong> Skenario sesi dicabut aktif. Token di Keycloak dianggap kadaluarsa/dihapus Admin. Gateway akan langsung memblokir di awal, berapapun Role-nya.</div>`;
+                }
+
+                if (riskScore >= 0.6) {
+                    explainHTML += `<div style="padding: 10px; background: #FFFBEB; border-left: 3px solid var(--color-warning); border-radius: 4px; font-size: 12px;"><strong>⚠️ Risk Behavior Tinggi (${riskScore}):</strong> Sistem CARA menganggap akses ini mencurigakan (Anomali). `;
+                    if (mfaDone) {
+                        explainHTML += `<br><span style="color: var(--color-success); font-weight: 600;">✅ MFA Terpenuhi:</span> Karena Anda mencentang Step-Up MFA, sistem menganggap verifikasi tambahan lolos.</div>`;
+                    } else {
+                        explainHTML += `<br><span style="color: var(--color-error); font-weight: 600;">❌ MFA Gagal:</span> Karena MFA belum dicentang, OPA Policy akan menolak request ini (Wajib MFA).</div>`;
+                    }
+                } else {
+                    explainHTML += `<div style="padding: 10px; background: #F0FDF4; border-left: 3px solid var(--color-success); border-radius: 4px; font-size: 12px;"><strong>✅ Risk Behavior Aman (${riskScore}):</strong> Aktivitas dinilai wajar. Tidak membutuhkan trigger keamanan tambahan (MFA opsional).</div>`;
+                }
+            }
+
+            document.getElementById("techExplainer").innerHTML = explainHTML;
+            document.getElementById("analogyBadge").innerText = "Live Data Inspector";
+            document.getElementById("analogyExplainer").innerHTML = `<span style="font-size: 12px;">Parameter di atas selalu terupdate saat Anda mengganti Dropdown / Toggle.<br><br>Klik tombol <strong>Send Request</strong> untuk mensimulasikan perjalanan request ini melewati setiap pos pengecekan keamanan.</span>`;
+        }
+
         function onUserChange() {
             logInfo(`Switched active profile context to ${document.getElementById("userSelect").value}`);
+            updateLiveExplainer();
         }
 
         function onRiskChange(val) {
             document.getElementById("riskVal").innerText = parseFloat(val).toFixed(2);
+            updateLiveExplainer();
         }
+
+        window.onload = () => {
+            updateLiveExplainer();
+        };
 
         function clearConsole() {
             document.getElementById("consoleBody").innerHTML = '';
@@ -813,6 +873,24 @@
             
             // Oathkeeper checks signature
             logInfo(`IAP Gate: Validating signature of JWT token for user '${user.name}'...`);
+            
+            if (userKey === 'unauth-user') {
+                highlightNode("nodeOathkeeper", "error");
+                colorPath("path2", "error");
+                logError(`IAP Gate: No valid JWT token found (Unauthenticated).`);
+                logError(`🔴 Gateway Response: 401 Unauthorized [Reason: missing_token]`);
+                
+                document.getElementById("techExplainer").innerHTML = `
+                    <strong>No Token (401)</strong><br>
+                    Oathkeeper (IAP) menolak akses di gerbang paling depan karena request tidak memiliki JWT token yang valid. Request diblokir dan tidak akan pernah sampai ke Keycloak, OPA, apalagi Microservice.
+                `;
+                document.getElementById("analogyExplainer").innerHTML = `
+                    <strong>Diusir di Gerbang Utama</strong><br>
+                    Anda mencoba masuk ke fasilitas penelitian tanpa membawa ID Card pengunjung. Penjaga gerbang (Oathkeeper) langsung mengusir Anda pergi tanpa memanggil resepsionis.
+                `;
+                return;
+            }
+
             highlightNode("nodeOathkeeper", "success");
             colorPath("path2", "active");
             

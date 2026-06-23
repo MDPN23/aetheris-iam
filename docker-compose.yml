@@ -260,3 +260,32 @@ services:
       timeout: 3s
       retries: 3
 
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: aetheris-dashboard
+    environment:
+      - HOSTNAME=0.0.0.0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - CARA_URL=http://cara-mock:5002
+      - OPA_ADAPTER_URL=http://opa-adapter:8182
+      - REDIS_HOST=redis
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dashboard:/app/dashboard
+      - ./scripts:/app/scripts:ro
+      - ./mockdata:/app/mockdata
+      - ./policies:/app/policies
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      cara-mock:
+        condition: service_healthy
+      opa-adapter:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aetheris-net

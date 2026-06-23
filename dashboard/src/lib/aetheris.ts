@@ -83,7 +83,7 @@ export async function provisionTenant(tenantId: string): Promise<{ success: bool
     
     // Also trigger redis flush to clear any cached states
     try {
-      await execAsync("docker exec aetheris-redis redis-cli FLUSHDB");
+      await execAsync("redis-cli -h redis FLUSHDB");
     } catch (redisError) {
       console.warn("Failed to flush redis during provisioning:", redisError);
     }
@@ -150,7 +150,7 @@ export async function updateCaraMockRisk(username: string, tenant: string, score
     
     // Also invalidate Redis cache for this user risk score to ensure fresh evaluation
     try {
-      await execAsync(`docker exec aetheris-redis redis-cli DEL "risk:score:${tenant}:${username}"`);
+      await execAsync(`redis-cli -h redis DEL "risk:score:${tenant}:${username}"`);
     } catch (err) {
       console.warn("Failed to delete redis risk cache:", err);
     }
@@ -263,7 +263,7 @@ export async function revokeTokenKeycloak(token: string, tenant: string): Promis
     
     // Invalidate Redis cache
     try {
-      await execAsync("docker exec aetheris-redis redis-cli FLUSHDB");
+      await execAsync("redis-cli -h redis FLUSHDB");
     } catch (err) {
       console.warn("Failed to flush redis cache after revoke:", err);
     }
@@ -291,7 +291,7 @@ export async function logoutUserKeycloak(refreshToken: string, tenant: string): 
     
     // Invalidate Redis cache
     try {
-      await execAsync("docker exec aetheris-redis redis-cli FLUSHDB");
+      await execAsync("redis-cli -h redis FLUSHDB");
     } catch (err) {
       console.warn("Failed to flush redis cache after logout:", err);
     }
