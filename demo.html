@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aetheris IAM Playground</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-main: #F8FAFC;
@@ -135,7 +138,8 @@
             color: var(--text-navy);
         }
 
-        select, input[type="text"] {
+        select,
+        input[type="text"] {
             width: 100%;
             padding: 8px 12px;
             font-size: 13px;
@@ -147,7 +151,8 @@
             transition: border-color 0.2s;
         }
 
-        select:focus, input[type="text"]:focus {
+        select:focus,
+        input[type="text"]:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2px var(--border-focus);
         }
@@ -255,11 +260,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider-switch {
+        input:checked+.slider-switch {
             background-color: var(--primary);
         }
 
-        input:checked + .slider-switch:before {
+        input:checked+.slider-switch:before {
             transform: translateX(18px);
         }
 
@@ -407,6 +412,7 @@
             0% {
                 offset-distance: 0%;
             }
+
             100% {
                 offset-distance: 100%;
             }
@@ -463,14 +469,32 @@
             user-select: none;
         }
 
-        .console-success { color: var(--color-success); }
-        .console-error { color: var(--color-error); }
-        .console-warning { color: var(--color-warning); }
-        .console-info { color: #38BDF8; }
+        .console-success {
+            color: var(--color-success);
+        }
+
+        .console-error {
+            color: var(--color-error);
+        }
+
+        .console-warning {
+            color: var(--color-warning);
+        }
+
+        .console-info {
+            color: #38BDF8;
+        }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(2px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(2px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Side Explainer Box */
@@ -523,6 +547,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -538,7 +563,12 @@
         <div class="card">
             <div class="card-title">
                 <span>Simulator Controls</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
             </div>
 
             <!-- User Selector -->
@@ -580,7 +610,8 @@
                     <label for="riskSlider">3. CARA Behavior Risk Score</label>
                     <span id="riskVal" class="slider-value">0.15</span>
                 </div>
-                <input type="range" id="riskSlider" min="0" max="1" step="0.05" value="0.15" oninput="onRiskChange(this.value)">
+                <input type="range" id="riskSlider" min="0" max="1" step="0.05" value="0.15"
+                    oninput="onRiskChange(this.value)">
             </div>
 
             <!-- Toggles for session and MFA -->
@@ -588,7 +619,8 @@
                 <div class="toggle-item">
                     <div style="display: flex; flex-direction: column; gap: 2px;">
                         <span>Perform Step-Up MFA?</span>
-                        <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Simulasi verifikasi 2FA. Wajib jika Risk &ge; 0.60</span>
+                        <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Simulasi
+                            verifikasi 2FA. Wajib jika Risk &ge; 0.60</span>
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="mfaToggle" onchange="updateLiveExplainer()">
@@ -598,7 +630,8 @@
                 <div class="toggle-item">
                     <div style="display: flex; flex-direction: column; gap: 2px;">
                         <span>Revoke User Session?</span>
-                        <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Simulasi sesi ditutup paksa/logout dari server</span>
+                        <span style="font-size: 10px; color: var(--text-muted); font-weight: normal;">Simulasi sesi
+                            ditutup paksa/logout dari server</span>
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="revokeToggle" onchange="updateLiveExplainer()">
@@ -609,39 +642,41 @@
 
             <!-- Send Button -->
             <button class="btn-send" onclick="sendRequest()">
-                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                <svg viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                </svg>
                 Send Request
             </button>
         </div>
 
         <!-- Right Layout: Visual Flow & Terminal Logs -->
         <div class="right-layout">
-            
+
             <!-- Animated Flow Visualizer -->
             <div class="visualizer-card">
                 <div class="card-title">Request Lifecyle Flow Diagram</div>
-                
+
                 <div class="flow-diagram" id="flowDiagram">
                     <!-- SVG lines -->
                     <svg class="svg-connections" id="svgConns">
                         <!-- Client to Oathkeeper -->
-                        <path id="path1" class="connection-path" d="M 110,80 L 190,80"/>
-                        
+                        <path id="path1" class="connection-path" d="M 110,80 L 190,80" />
+
                         <!-- Oathkeeper to OPA Adapter -->
-                        <path id="path2" class="connection-path" d="M 290,80 L 370,80"/>
-                        
+                        <path id="path2" class="connection-path" d="M 290,80 L 370,80" />
+
                         <!-- OPA Adapter to Keycloak -->
-                        <path id="path3" class="connection-path" d="M 420,60 Q 420,10 470,10"/>
+                        <path id="path3" class="connection-path" d="M 420,60 Q 420,10 470,10" />
                         <!-- OPA Adapter to CARA -->
-                        <path id="path4" class="connection-path" d="M 420,80 Q 440,80 470,80"/>
+                        <path id="path4" class="connection-path" d="M 420,80 Q 440,80 470,80" />
                         <!-- OPA Adapter to OPA -->
-                        <path id="path5" class="connection-path" d="M 420,100 Q 420,150 470,150"/>
-                        
+                        <path id="path5" class="connection-path" d="M 420,100 Q 420,150 470,150" />
+
                         <!-- OPA Adapter back to Oathkeeper (Authorization Response) -->
-                        <path id="path6" class="connection-path" d="M 370,90 L 290,90"/>
-                        
+                        <path id="path6" class="connection-path" d="M 370,90 L 290,90" />
+
                         <!-- Oathkeeper to Microservice -->
-                        <path id="path7" class="connection-path" d="M 240,110 L 240,135 Q 240,150 280,150 L 590,150"/>
+                        <path id="path7" class="connection-path" d="M 240,110 L 240,135 Q 240,150 280,150 L 590,150" />
                     </svg>
 
                     <!-- Nodes -->
@@ -702,14 +737,17 @@
                 <div class="explainer-box">
                     <h3>🛡️ Security Explainer</h3>
                     <div id="techExplainer">
-                        Select a user and send a request to view details on OIDC token validation, policies, and role mappings.
+                        Select a user and send a request to view details on OIDC token validation, policies, and role
+                        mappings.
                     </div>
                 </div>
                 <div class="explainer-box">
-                    <h3>🏰 Guard Analogy</h3>
-                    <div class="analogy-badge" id="analogyBadge">Research Facility</div>
+                    <h3>👁️ Zero Trust Principles</h3>
+                    <div class="analogy-badge" id="analogyBadge">ZTA Analysis</div>
                     <div id="analogyExplainer">
-                        Watch how the front gate guard, receptionist rulebook, and behavioral scanners map to real-world cloud security.
+                        <span style="font-size: 13px; color: var(--text-navy);">Bagian ini akan menjelaskan pilar-pilar
+                            Zero Trust mana yang sedang bekerja melindungi infrastruktur Anda berdasarkan konfigurasi
+                            parameter di sebelah kiri.</span>
                     </div>
                 </div>
             </div>
@@ -742,6 +780,21 @@
                 "DELETE": ["svc-b-admin", "global-admin"]
             }
         };
+
+        let consecutiveErrors = 0;
+
+        function checkCaraAnomaly() {
+            consecutiveErrors++;
+            if (consecutiveErrors >= 4) {
+                let currentRisk = parseFloat(document.getElementById("riskSlider").value);
+                if (currentRisk < 0.6) {
+                    document.getElementById("riskSlider").value = 0.8;
+                    document.getElementById("riskVal").innerText = "0.80";
+                    logWarning(`⚠️ [CARA AI Engine] Mendeteksi ${consecutiveErrors} kegagalan akses beruntun! Risk Score otomatis dinaikkan ke 0.80 (Anomali).`);
+                    updateLiveExplainer();
+                }
+            }
+        }
 
         function updateLiveExplainer() {
             const userKey = document.getElementById("userSelect").value;
@@ -781,8 +834,26 @@
             }
 
             document.getElementById("techExplainer").innerHTML = explainHTML;
-            document.getElementById("analogyBadge").innerText = "Live Data Inspector";
-            document.getElementById("analogyExplainer").innerHTML = `<span style="font-size: 12px;">Parameter di atas selalu terupdate saat Anda mengganti Dropdown / Toggle.<br><br>Klik tombol <strong>Send Request</strong> untuk mensimulasikan perjalanan request ini melewati setiap pos pengecekan keamanan.</span>`;
+            document.getElementById("analogyBadge").innerText = "Zero Trust Concept in Action";
+
+            let ztHTML = `<ul style="font-size: 12px; margin-left: 16px; padding: 0; color: var(--text-navy); display: flex; flex-direction: column; gap: 8px;">`;
+
+            if (userKey === 'unauth-user') {
+                ztHTML += `<li><strong>Verify Explicitly:</strong> Ketiadaan kredensial otomatis diblokir di perimeter (IAP Gate), karena ZTA mengasumsikan seluruh *traffic* masuk adalah berbahaya (*Hostile*).</li>`;
+            } else {
+                ztHTML += `<li><strong>Least Privilege Access:</strong> (RBAC) Memastikan walau token valid, Anda tetap dibatasi hanya pada aksi (GET/POST/dll) yang secara spesifik diizinkan.</li>`;
+            }
+
+            if (riskScore >= 0.6) {
+                ztHTML += `<li><strong>Continuous Verification:</strong> Trust itu dinamis. Karena behavior mencurigakan (Risk ${riskScore}), sistem meminta verifikasi tambahan (Step-Up MFA) secara *real-time*.</li>`;
+            }
+
+            if (sessionRevoked) {
+                ztHTML += `<li><strong>Assume Breach:</strong> Sesi dianggap bisa bocor kapan saja. Validasi ulang (introspeksi token) di setiap klik memutus sesi penyusup secara instan saat sesi di Keycloak dicabut.</li>`;
+            }
+
+            ztHTML += `</ul>`;
+            document.getElementById("analogyExplainer").innerHTML = ztHTML;
         }
 
         function onUserChange() {
@@ -808,7 +879,7 @@
             const timeStr = date.toTimeString().split(' ')[0];
             const div = document.createElement("div");
             div.className = "console-line";
-            
+
             let colorClass = '';
             if (type === 'success') colorClass = 'console-success';
             else if (type === 'error') colorClass = 'console-error';
@@ -845,14 +916,14 @@
         function resetVisuals() {
             const nodes = ["nodeClient", "nodeOathkeeper", "nodeAdapter", "nodeKeycloak", "nodeCARA", "nodeOPA", "nodeService"];
             nodes.forEach(n => highlightNode(n, null));
-            
+
             const paths = ["path1", "path2", "path3", "path4", "path5", "path6", "path7"];
             paths.forEach(p => colorPath(p, null));
         }
 
         async function sendRequest() {
             resetVisuals();
-            
+
             const userKey = document.getElementById("userSelect").value;
             const actionKey = document.getElementById("actionSelect").value;
             const riskScore = parseFloat(document.getElementById("riskSlider").value);
@@ -868,32 +939,35 @@
             logConsole(`⚡ Dispatching request: ${method} ${endpoint}`);
             highlightNode("nodeClient", "success");
             colorPath("path1", "active");
-            
+
             await new Promise(r => setTimeout(r, 400));
-            
+
             // Oathkeeper checks signature
             logInfo(`IAP Gate: Validating signature of JWT token for user '${user.name}'...`);
-            
+
             if (userKey === 'unauth-user') {
                 highlightNode("nodeOathkeeper", "error");
                 colorPath("path2", "error");
                 logError(`IAP Gate: No valid JWT token found (Unauthenticated).`);
                 logError(`🔴 Gateway Response: 401 Unauthorized [Reason: missing_token]`);
-                
+
                 document.getElementById("techExplainer").innerHTML = `
                     <strong>No Token (401)</strong><br>
                     Oathkeeper (IAP) menolak akses di gerbang paling depan karena request tidak memiliki JWT token yang valid. Request diblokir dan tidak akan pernah sampai ke Keycloak, OPA, apalagi Microservice.
                 `;
                 document.getElementById("analogyExplainer").innerHTML = `
-                    <strong>Diusir di Gerbang Utama</strong><br>
-                    Anda mencoba masuk ke fasilitas penelitian tanpa membawa ID Card pengunjung. Penjaga gerbang (Oathkeeper) langsung mengusir Anda pergi tanpa memanggil resepsionis.
+                    <div style="font-size:12px; color:var(--text-navy);">
+                        <strong>Zero Trust: Verify Explicitly</strong><br>
+                        Oathkeeper (IAP) mengasumsikan semua jaringan bersifat <em>Hostile</em>. Ketiadaan JWT Token langsung memicu pemblokiran di perimeter paling luar tanpa mengekspos aplikasi internal (OPA & Microservices).
+                    </div>
                 `;
+                checkCaraAnomaly();
                 return;
             }
 
             highlightNode("nodeOathkeeper", "success");
             colorPath("path2", "active");
-            
+
             await new Promise(r => setTimeout(r, 400));
 
             // Adapter intercept
@@ -904,7 +978,7 @@
             colorPath("path3", "active");
             logInfo(`Introspection: Querying Keycloak '/token/introspect' endpoint...`);
             await new Promise(r => setTimeout(r, 400));
-            
+
             if (sessionRevoked) {
                 highlightNode("nodeKeycloak", "error");
                 highlightNode("nodeAdapter", "error");
@@ -912,17 +986,19 @@
                 logError(`Introspection Result: Token is INACTIVE (Session Revoked via Admin Dashboard/Logout).`);
                 logError(`Blocking Request: fail-closed enforcement active.`);
                 logError(`🔴 Gateway Response: 403 Forbidden [Reason: token_revoked]`);
-                
+
                 document.getElementById("techExplainer").innerHTML = `
                     <strong>Token Revoked</strong><br>
                     The session verification failed in Keycloak. Introspection returned <code>{"active": false}</code>. 
                     The proxy enforces <strong>fail-closed security</strong>, denying any further resource access.
                 `;
                 document.getElementById("analogyExplainer").innerHTML = `
-                    <strong>The Badge got Blocked</strong><br>
-                    The receptionist called the badge office and discovered this badge was reported stolen. 
-                    Access is denied immediately.
+                    <div style="font-size:12px; color:var(--text-navy);">
+                        <strong>Zero Trust: Assume Breach</strong><br>
+                        Sistem mengasumsikan token pengguna telah jatuh ke tangan yang salah. Validasi ulang (Introspeksi) yang dipaksa terjadi di setiap request berhasil memotong jalur peretas seketika saat sesi di-Revoke.
+                    </div>
                 `;
+                checkCaraAnomaly();
                 return;
             } else {
                 highlightNode("nodeKeycloak", "success");
@@ -948,7 +1024,7 @@
             colorPath("path5", "active");
             logInfo(`OPA Engine: Fetching Rego security policies...`);
             await new Promise(r => setTimeout(r, 400));
-            
+
             // Eval MFA
             let mfaOk = true;
             if (riskScore >= 0.6 && !mfaDone) {
@@ -964,23 +1040,25 @@
 
             // Evaluate combined adapter decision
             await new Promise(r => setTimeout(r, 400));
-            
+
             if (!mfaOk) {
                 highlightNode("nodeAdapter", "warning");
                 highlightNode("nodeOPA", "warning");
                 colorPath("path6", "warning");
                 logWarning(`OPA Evaluation Failed: High risk access requires MFA. Token missing 'mfa' claim.`);
                 logError(`🔴 Gateway Response: 403 Forbidden [Reason: step_up_mfa_required]`);
-                
+
                 document.getElementById("techExplainer").innerHTML = `
                     <strong>MFA Required</strong><br>
                     OPA policy evaluated <code>mfa_satisfied := false</code> because the risk score is <strong>${riskScore.toFixed(2)}</strong> (high risk $\\ge 0.6$) and the token lacks the claim <code>acr: mfa</code>.
                 `;
                 document.getElementById("analogyExplainer").innerHTML = `
-                    <strong>Biometric Scan Needed</strong><br>
-                    The receptionist noticed suspicious behavior on the cameras. 
-                    They need an additional fingerprint scan (MFA) to let the visitor pass.
+                    <div style="font-size:12px; color:var(--text-navy);">
+                        <strong>Zero Trust: Continuous Verification</strong><br>
+                        Sistem mendeteksi anomali (Risk $\\ge$ 0.6). Karena ZTA tidak pernah percaya penuh pada pengguna, sistem memaksa otentikasi lapis kedua (MFA). Penolakan MFA memicu penolakan <em>request</em>.
+                    </div>
                 `;
+                checkCaraAnomaly();
                 return;
             }
 
@@ -990,17 +1068,19 @@
                 colorPath("path6", "error");
                 logError(`OPA Evaluation Failed: Roles ${JSON.stringify(user.roles)} cannot perform ${method} on ${serviceKey}.`);
                 logError(`🔴 Gateway Response: 403 Forbidden [Reason: insufficient_privilege]`);
-                
+
                 document.getElementById("techExplainer").innerHTML = `
                     <strong>Role Violation (RBAC)</strong><br>
                     The OPA rule failed. The request requires one of these roles: <code>${JSON.stringify(allowedRoles)}</code>. 
                     Your user only has: <code>${JSON.stringify(user.roles)}</code>.
                 `;
                 document.getElementById("analogyExplainer").innerHTML = `
-                    <strong>Wrong Key Card</strong><br>
-                    The facility rulebook says only researchers with "Writer" badges can enter this lab. 
-                    Your card only has "Reader" clearance.
+                    <div style="font-size:12px; color:var(--text-navy);">
+                        <strong>Zero Trust: Least Privilege</strong><br>
+                        Evaluasi OPA Engine mencegah pengguna (walau punya token valid) melakukan akses melebihi batas hak dasarnya. Sistem mengurung pengguna hanya di area spesifik sesuai <em>role</em>.
+                    </div>
                 `;
+                checkCaraAnomaly();
                 return;
             }
 
@@ -1009,11 +1089,12 @@
             colorPath("path6", "success");
             colorPath("path7", "success");
             highlightNode("nodeService", "success");
-            
+
+            consecutiveErrors = 0; // reset counter on successful request
             logSuccess(`Authorization Approved! Forwarding to Upstream...`);
             logInfo(`Header Injection: Injecting X-Aetheris-Subject: '${user.sub}'`);
             logInfo(`Header Injection: Injecting X-Aetheris-Roles: '${JSON.stringify(user.roles)}'`);
-            
+
             await new Promise(r => setTimeout(r, 400));
             logSuccess(`🟢 Upstream Resource Response: 200 OK`);
 
@@ -1027,11 +1108,19 @@
                 </ul>
             `;
             document.getElementById("analogyExplainer").innerHTML = `
-                <strong>Access Approved</strong><br>
-                The visitor badge is valid, the cameras show no threat, and the rulebook allows entry. 
-                The guard unlocks the door.
+                <div style="font-size:12px; color:var(--text-navy);">
+                    <strong>Zero Trust Architecture (ZTA) Sukses</strong><br>
+                    Akses ini berhasil diteruskan ke Microservice karena secara simultan lolos dari evaluasi 4 lapis ZTA:
+                    <ul style="margin-top: 6px; margin-left: 16px;">
+                        <li>Identitas otentik (Token Valid)</li>
+                        <li>Sesi masih aktif (Tidak Revoked)</li>
+                        <li>Behavior aman / lolos MFA (Risk Assessed)</li>
+                        <li>Sesuai batas role spesifik (Least Privilege)</li>
+                    </ul>
+                </div>
             `;
         }
     </script>
 </body>
+
 </html>
