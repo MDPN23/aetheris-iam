@@ -545,9 +545,12 @@
             <div class="form-group">
                 <label for="userSelect">1. Authenticate Identity (OIDC User)</label>
                 <select id="userSelect" onchange="onUserChange()">
-                    <option value="admin-user">admin-user (Roles: admin, writer)</option>
-                    <option value="reader-user">reader-user (Roles: reader)</option>
-                    <option value="service-a-only">service-a-only (Roles: svc-a-reader)</option>
+                    <option value="global-admin">Global Admin (Roles: global-admin)</option>
+                    <option value="global-reader">Global Reader (Roles: global-reader)</option>
+                    <option value="admin-service-a">Admin Service A (Roles: svc-a-admin)</option>
+                    <option value="admin-service-b">Admin Service B (Roles: svc-b-admin)</option>
+                    <option value="reader-service-a">Reader Service A (Roles: svc-a-reader)</option>
+                    <option value="reader-service-b">Reader Service B (Roles: svc-b-reader)</option>
                     <option value="unauth-user">Guest / Unauthenticated (No JWT Token)</option>
                 </select>
             </div>
@@ -556,11 +559,18 @@
             <div class="form-group">
                 <label for="actionSelect">2. Action & Endpoint</label>
                 <select id="actionSelect" onchange="updateLiveExplainer()">
-                    <option value="GET_a">GET /api/microservice-a/data</option>
-                    <option value="POST_a">POST /api/microservice-a/data</option>
-                    <option value="DELETE_a">DELETE /api/microservice-a/data/1</option>
-                    <option value="GET_b">GET /api/microservice-b/events</option>
-                    <option value="POST_b">POST /api/microservice-b/events</option>
+                    <optgroup label="Microservice A (CRUD)">
+                        <option value="GET_a">GET /api/microservice-a/data (Read)</option>
+                        <option value="POST_a">POST /api/microservice-a/data (Create)</option>
+                        <option value="PUT_a">PUT /api/microservice-a/data/1 (Update)</option>
+                        <option value="DELETE_a">DELETE /api/microservice-a/data/1 (Delete)</option>
+                    </optgroup>
+                    <optgroup label="Microservice B (CRUD)">
+                        <option value="GET_b">GET /api/microservice-b/events (Read)</option>
+                        <option value="POST_b">POST /api/microservice-b/events (Create)</option>
+                        <option value="PUT_b">PUT /api/microservice-b/events/1 (Update)</option>
+                        <option value="DELETE_b">DELETE /api/microservice-b/events/1 (Delete)</option>
+                    </optgroup>
                 </select>
             </div>
 
@@ -709,37 +719,27 @@
 
     <script>
         const users = {
-            "admin-user": {
-                name: "admin-user",
-                sub: "c8dd633e-4cd8-4429-83d4-e5bb299b0585",
-                roles: ["service-a-writer", "service-b-writer", "aetheris-admin"]
-            },
-            "reader-user": {
-                name: "reader-user",
-                sub: "fa82a170-a392-411a-8cfa-53ef711b7d51",
-                roles: ["service-a-reader", "service-b-reader"]
-            },
-            "service-a-only": {
-                name: "service-a-only",
-                sub: "b0b2e811-9e23-455b-80a5-f8a48c4d29f8",
-                roles: ["service-a-reader"]
-            },
-            "unauth-user": {
-                name: "Guest (Unauthenticated)",
-                sub: "N/A",
-                roles: []
-            }
+            "global-admin": { name: "Global Admin", sub: "admin-123", roles: ["global-admin"] },
+            "global-reader": { name: "Global Reader", sub: "reader-123", roles: ["global-reader"] },
+            "admin-service-a": { name: "Admin Service A", sub: "admin-a-123", roles: ["svc-a-admin"] },
+            "admin-service-b": { name: "Admin Service B", sub: "admin-b-123", roles: ["svc-b-admin"] },
+            "reader-service-a": { name: "Reader Service A", sub: "reader-a-123", roles: ["svc-a-reader"] },
+            "reader-service-b": { name: "Reader Service B", sub: "reader-b-123", roles: ["svc-b-reader"] },
+            "unauth-user": { name: "Guest (Unauthenticated)", sub: "N/A", roles: [] }
         };
 
         const permission_matrix = {
             "microservice-a": {
-                "GET": ["service-a-reader", "service-a-writer", "aetheris-admin"],
-                "POST": ["service-a-writer", "aetheris-admin"],
-                "DELETE": ["aetheris-admin"]
+                "GET": ["svc-a-reader", "svc-a-admin", "global-reader", "global-admin"],
+                "POST": ["svc-a-admin", "global-admin"],
+                "PUT": ["svc-a-admin", "global-admin"],
+                "DELETE": ["svc-a-admin", "global-admin"]
             },
             "microservice-b": {
-                "GET": ["service-b-reader", "service-b-writer", "aetheris-admin"],
-                "POST": ["service-b-writer", "aetheris-admin"]
+                "GET": ["svc-b-reader", "svc-b-admin", "global-reader", "global-admin"],
+                "POST": ["svc-b-admin", "global-admin"],
+                "PUT": ["svc-b-admin", "global-admin"],
+                "DELETE": ["svc-b-admin", "global-admin"]
             }
         };
 
